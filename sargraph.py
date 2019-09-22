@@ -57,6 +57,8 @@ g.ylabel("cpu % usage (user)")
 
 g("set ylabel tc rgb 'white' font 'Courier-New,8'")
 
+g("set datafile commentschars '#'")
+
 g("set timefmt '%s'")
 g("set xdata time")
 g("set xtics 6000")
@@ -93,6 +95,8 @@ flags = fcntl(sys.stdin, F_GETFL)
 fcntl(sys.stdin, F_SETFL, flags | os.O_NONBLOCK)
 labels = []
 
+f.write("# machine: %s, cpu count: %d\n" % (uname, cpus))
+
 while 1:
     rlist, _, _ = select([p.stdout, sys.stdin], [], [], 1)
     print rlist
@@ -103,6 +107,7 @@ while 1:
             die = 1
             break
         labels.append(["%04d-%02d-%02d-%02d:%02d:%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second), label_line])
+        f.write("# %04d-%02d-%02d-%02d:%02d:%02d label: %s\n" % (now.year, now.month, now.day, now.hour, now.minute, now.second, label_line))
     if (p.stdout not in rlist):
         continue
     now = "%04d-%02d-%02d" % (now.year, now.month, now.day);
