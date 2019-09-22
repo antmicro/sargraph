@@ -140,15 +140,18 @@ while 1:
         break
 
 AVERAGE_LOAD = AVERAGE_LOAD / float(i)
+MAX_USED_RAM = MAX_USED_RAM / 1024.0 / 1024.0
+
+sdt = datetime.strptime(START_DATE, '%Y-%m-%d %H:%M:%S')
+edt = datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
+delta_t = ((edt - sdt).total_seconds()) / 60.0
+
+f.write("# total ram: %d GB, max ram used: %.2f GB, avarage load: %.2f %%, duration: %.2f minutes\n" % (TOTAL_RAM, MAX_USED_RAM, AVERAGE_LOAD, delta_t))
 
 f.close()
 
 g.title("cpu load (avarage = %.2f %%)" % AVERAGE_LOAD)
 g("set title tc rgb 'white' font 'Courier-New,8'")
-
-sdt = datetime.strptime(START_DATE, '%Y-%m-%d %H:%M:%S')
-edt = datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
-delta_t = ((edt - sdt).total_seconds()) / 60.0
 
 seconds_between = (edt - sdt).total_seconds()
 if seconds_between < 100:
@@ -163,8 +166,6 @@ g("set xrange ['%s':'%s']" % (nsdt.strftime("%Y-%m-%d-%H:%M:%S"), nedt.strftime(
 now = datetime.now()
 now = "%04d-%02d-%02d %02d:%02d:%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second);
 
-
-MAX_USED_RAM = MAX_USED_RAM / 1024.0 / 1024.0
 
 g("set label 101 at screen 0.02, screen 0.95 \"Running on {/:Bold %s} at {/:Bold %s}, cpu count is {/:Bold %d}, total ram is {/:Bold %d GB}\\nduration: {/:Bold %s} .. {/:Bold %s} (%.2f minutes)\" tc rgb 'white'" % (uname, now, cpus, TOTAL_RAM, START_DATE, END_DATE, delta_t))
 
