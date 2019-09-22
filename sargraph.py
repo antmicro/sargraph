@@ -68,12 +68,11 @@ g("set grid xtics ytics ls 12 lc rgb '#444444'")
 g("set style fill solid")
 g("set palette defined ( 0.2 '#00ff00', 0.8 '#ff0000' )")
 g("set cbrange [0:100]")
-g("set yrange [0:110]")
 g("unset colorbox")
 g("unset key")
 
 
-g("set output 'test.png'")
+g("set output 'plot.png'")
 g("set multiplot layout 2,1 title \"%s\"" % "\\n\\n\\n")
 
 signal.signal(signal.SIGTERM, kill_handler)
@@ -147,6 +146,22 @@ now = "%04d-%02d-%02d %02d:%02d:%02d" % (now.year, now.month, now.day, now.hour,
 MAX_USED_RAM = MAX_USED_RAM / 1024.0 / 1024.0
 
 g("set label 101 at screen 0.02, screen 0.95 \"Running on {/:Bold %s} at {/:Bold %s}, cpu count is {/:Bold %d}, total ram is {/:Bold %d GB}\\nduration: {/:Bold %s} .. {/:Bold %s} (%.2f minutes)\" tc rgb 'white'" % (uname, now, cpus, TOTAL_RAM, START_DATE, END_DATE, delta_t))
+
+i = 0
+#labels = [[START_DATE.replace(" ", "-"), "start"], [END_DATE.replace(" ", "-"), "stop"]]
+labels = []
+for label in labels:
+    i = i + 1
+    g("set arrow nohead from '%s', graph 0.01 to '%s', graph 0.87 front lc rgb 'red' dt 2" % (label[0],label[0]))
+    g("set object rect at '%s', graph 0.90 size char %d, char 1.5 fc rgb 'red'" % (label[0],len("%d" % i)+1))
+    g("set object rect at '%s', graph 0.0 size char 0.5, char 0.5 front fc rgb 'red'" % label[0])
+    g("set label at '%s', graph 0.90 '%d' center tc rgb 'black' font 'Courier-New,7'" % (label[0],i))
+    g("set label at '%s', graph 0.95 '%s' center tc rgb 'white' font 'Courier-New,7'" % (label[0], label[1][0:20]))
+
+if i > 0:
+    g("set yrange [0:119]")
+else:
+    g("set yrange [0:100]")
 
 g("set object rectangle from graph 0, graph 0 to graph 1, graph 1 behind fillcolor rgb '#111111' fillstyle solid noborder")
 g("set object rectangle from '%s', 0 to '%s', 100 behind fillcolor rgb '#000000' fillstyle solid noborder" % (START_DATE.replace(" ", "-"), END_DATE.replace(" ", "-")))
