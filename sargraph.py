@@ -4,12 +4,13 @@
 #
 
 from Gnuplot import Gnuplot, Data, File
-from time import sleep
 from datetime import datetime, timedelta
+from select import select
 import signal
 import os
 import subprocess
 import sys
+from fcntl import fcntl, F_GETFL, F_SETFL
 
 global die
 die = 0
@@ -86,9 +87,22 @@ TOTAL_RAM = 0
 MAX_USED_RAM = 0
 AVERAGE_LOAD = 0.0
 
+flags = fcntl(sys.stdin, F_GETFL)
+fcntl(sys.stdin, F_SETFL, flags | os.O_NONBLOCK)
+labels = []
 
 while 1:
+    rlist, _, _ = select([p.stdout, sys.stdin], [], [], 1)
+    print rlist
     now = datetime.now()
+    if sys.stdin in rlist:
+        label_line = sys.stdin.readline().replace("\n", "")
+        if label_line == "q":
+            die = 1
+            break
+        labels.append(["%04d-%02d-%02d-%02d:%02d:%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second), label_line])
+    if (p.stdout not in rlist):
+        continue
     now = "%04d-%02d-%02d" % (now.year, now.month, now.day);
     cpu_names = p.stdout.readline().replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("\n", "").replace("%", "").split(" ")
     cpu_names[0] = "time"
@@ -148,8 +162,6 @@ MAX_USED_RAM = MAX_USED_RAM / 1024.0 / 1024.0
 g("set label 101 at screen 0.02, screen 0.95 \"Running on {/:Bold %s} at {/:Bold %s}, cpu count is {/:Bold %d}, total ram is {/:Bold %d GB}\\nduration: {/:Bold %s} .. {/:Bold %s} (%.2f minutes)\" tc rgb 'white'" % (uname, now, cpus, TOTAL_RAM, START_DATE, END_DATE, delta_t))
 
 i = 0
-#labels = [[START_DATE.replace(" ", "-"), "start"], [END_DATE.replace(" ", "-"), "stop"]]
-labels = []
 for label in labels:
     i = i + 1
     g("set arrow nohead from '%s', graph 0.01 to '%s', graph 0.87 front lc rgb 'red' dt 2" % (label[0],label[0]))
