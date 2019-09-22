@@ -61,21 +61,20 @@ g("set datafile commentschars '#'")
 
 g("set timefmt '%s'")
 g("set xdata time")
-g("set xtics 6000")
 g("set terminal pngcairo size 1200,800 background '#222222' font 'Courier-New,8'")
 g("set border lc rgb 'white'")
 g("set key tc rgb 'white'")
 g("set timefmt '%Y-%m-%d-%H:%M:%S'")
-g("set xtics format '%H:%M'")
-g("set xtics font 'Courier-New,8'")
-g("set ytics font 'Courier-New,8'")
+g("set xtics format '%H:%M:%S'")
+g("set xtics font 'Courier-New,8' tc rgb 'white'")
+g("set ytics font 'Courier-New,8' tc rgb 'white'")
 g("set grid xtics ytics ls 12 lc rgb '#444444'")
 g("set style fill solid")
 g("set palette defined ( 0.2 '#00ff00', 0.8 '#ff0000' )")
 g("set cbrange [0:100]")
 g("unset colorbox")
 g("unset key")
-
+g("set rmargin 6")
 
 g("set output 'plot.png'")
 g("set multiplot layout 2,1 title \"%s\"" % "\\n\\n\\n")
@@ -99,7 +98,6 @@ f.write("# machine: %s, cpu count: %d\n" % (uname, cpus))
 
 while 1:
     rlist, _, _ = select([p.stdout, sys.stdin], [], [], 1)
-    print rlist
     now = datetime.now()
     if sys.stdin in rlist:
         label_line = sys.stdin.readline().replace("\n", "")
