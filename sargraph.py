@@ -1,3 +1,5 @@
+#!/usr/bin/env python2
+
 #
 # (c) 2019 Antmicro <www.antmicro.com>
 # License: Apache
