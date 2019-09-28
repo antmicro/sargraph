@@ -27,19 +27,22 @@ def merge_dicts(x, y):
     res.update(y)
     return res
 
-
-print os.getpid()
-
-
 my_env = os.environ
 my_env["S_TIME_FORMAT"] = "ISO"
+
+TOTAL_RAM = 0
+
+with open("/proc/meminfo") as f:
+    TOTAL_RAM = int(f.read().split("\n")[0].replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("  ", " ").replace(" kB", "").split(" ")[1])/1024.0/1024.0
 
 try:
     p = subprocess.Popen(["sar", "-u","-r", "1"], stdout=subprocess.PIPE, env = my_env)
 except:
-    print "Error starting sar"
+    print("Error starting sar")
     sys.exit(1)
 
+
+print("%d" % os.getpid())
 
 g = Gnuplot(debug=1)
 
@@ -86,7 +89,6 @@ f = open("data.txt", "w")
 
 START_DATE = ""
 END_DATE = ""
-TOTAL_RAM = 0
 MAX_USED_RAM = 0
 AVERAGE_LOAD = 0.0
 
@@ -129,7 +131,7 @@ while 1:
 
     values = merge_dicts(ram_data, cpu_data)
     if TOTAL_RAM == 0:
-        TOTAL_RAM = (int(values['kbmemused']) + int(values['kbmemfree'])) / 1024 / 1024
+        TOTAL_RAM = (int(values['kbmemused']) + int(values['kbmemfree'])) / 1024.0 / 1024.0
     if MAX_USED_RAM < int(values['kbmemused']):
         MAX_USED_RAM = int(values['kbmemused'])
     f.write("%s %s %s\n" % (values["time"], values["user"], values["memused"]))
@@ -144,7 +146,7 @@ sdt = datetime.strptime(START_DATE, '%Y-%m-%d %H:%M:%S')
 edt = datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
 delta_t = ((edt - sdt).total_seconds()) / 60.0
 
-f.write("# total ram: %d GB, max ram used: %.2f GB, avarage load: %.2f %%, duration: %.2f minutes\n" % (TOTAL_RAM, MAX_USED_RAM, AVERAGE_LOAD, delta_t))
+f.write("# total ram: %.2f GB, max ram used: %.2f GB, avarage load: %.2f %%, duration: %.2f minutes\n" % (TOTAL_RAM, MAX_USED_RAM, AVERAGE_LOAD, delta_t))
 
 f.close()
 
@@ -165,7 +167,7 @@ now = datetime.now()
 now = "%04d-%02d-%02d %02d:%02d:%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second);
 
 
-g("set label 101 at screen 0.02, screen 0.95 \"Running on {/:Bold %s} at {/:Bold %s}, cpu count is {/:Bold %d}, total ram is {/:Bold %d GB}\\nduration: {/:Bold %s} .. {/:Bold %s} (%.2f minutes)\" tc rgb 'white'" % (uname, now, cpus, TOTAL_RAM, START_DATE, END_DATE, delta_t))
+g("set label 101 at screen 0.02, screen 0.95 \"Running on {/:Bold %s} at {/:Bold %s}, cpu count is {/:Bold %d}, total ram is {/:Bold %.2f GB}\\nduration: {/:Bold %s} .. {/:Bold %s} (%.2f minutes)\" tc rgb 'white'" % (uname, now, cpus, TOTAL_RAM, START_DATE, END_DATE, delta_t))
 
 i = 0
 for label in labels:
