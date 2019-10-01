@@ -56,7 +56,7 @@ cpus = int(machine.split(" CPU)")[0].split("(")[-1])
 
 p.stdout.readline()
 
-g.ylabel("cpu % usage (user)")
+g("set ylabel 'cpu % load (user)'")
 
 g("set ylabel tc rgb 'white' font 'Courier-New,8'")
 
@@ -150,7 +150,7 @@ f.write("# total ram: %.2f GB, max ram used: %.2f GB, avarage load: %.2f %%, dur
 
 f.close()
 
-g.title("cpu load (avarage = %.2f %%)" % AVERAGE_LOAD)
+g("set title 'cpu load (avarage = %.2f %%)'" % AVERAGE_LOAD)
 g("set title tc rgb 'white' font 'Courier-New,8'")
 
 seconds_between = (edt - sdt).total_seconds()
@@ -190,7 +190,8 @@ g("set object rectangle from '%s', 0 to '%s', 100 behind fillcolor rgb '#000000'
 d1 = File("data.txt", using="1:2:2", title="cpu", with_="boxes palette")
 g.plot(d1)
 
-g.title("ram usage (max = %.2f GB)" % MAX_USED_RAM);
+g("set ylabel 'ram % usage'")
+g("set title 'ram usage (max = %.2f GB)'" % MAX_USED_RAM);
 
 d2 = File("data.txt", using="1:3:3", title="ram", with_="boxes palette")
 g.plot(d2)
