@@ -124,7 +124,7 @@ labels = []
 f.write("# machine: %s, cpu count: %d\n" % (uname, cpus))
 
 while 1:
-    rlist, _, _ = select([p.stdout, sys.stdin], [], [], 0.5)
+    rlist, _, _ = select([p.stdout, sys.stdin], [], [], 1)
     now = datetime.now()
     if sys.stdin in rlist:
         label_line = sys.stdin.readline().replace("\n", "")
