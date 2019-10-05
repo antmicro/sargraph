@@ -89,7 +89,6 @@ g("set datafile commentschars '#'")
 
 g("set timefmt '%s'")
 g("set xdata time")
-g("set terminal pngcairo size 1200,800 background '#222222' font 'Courier-New,8'")
 g("set border lc rgb 'white'")
 g("set key tc rgb 'white'")
 g("set timefmt '%Y-%m-%d-%H:%M:%S'")
@@ -104,7 +103,9 @@ g("unset colorbox")
 g("unset key")
 g("set rmargin 6")
 
+g("set terminal pngcairo size 1200,800 background '#222222' font 'Courier-New,8'")
 g("set output 'plot.png'")
+
 g("set multiplot layout 2,1 title \"%s\"" % "\\n\\n\\n")
 
 signal.signal(signal.SIGTERM, kill_handler)
@@ -219,7 +220,6 @@ g("set title 'ram usage (max = %.2f GB)'" % MAX_USED_RAM);
 
 g("plot 'data.txt' using 1:3:3 title 'ram' with boxes palette")
 
-g("unset output")
+g("replot")
 g("quit")
-
 
