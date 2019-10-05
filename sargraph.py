@@ -219,6 +219,7 @@ g("set title 'ram usage (max = %.2f GB)'" % MAX_USED_RAM);
 
 g("plot 'data.txt' using 1:3:3 title 'ram' with boxes palette")
 
+g("unset output")
 g("quit")
 
 
