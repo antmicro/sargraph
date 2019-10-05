@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 #
 # (c) 2019 Antmicro <www.antmicro.com>
@@ -43,7 +43,7 @@ except:
 
 VERSION_EXPECTED = [5, 2]
 
-version = p.stdout.readline().split(" ")[1].split(".")
+version = p.stdout.readline().decode().split(" ")[1].split(".")
 if (int(version[0]) < VERSION_EXPECTED[0]):
     print("Gnuplot version too low. Need at least %d.%d found %s.%s" % (VERSION_EXPECTED[0], VERSION_EXPECTED[1], version[0], version[1]))
     sys.exit(1)
@@ -60,7 +60,11 @@ except:
 
 def g(command):
     print ("gnuplot> %s" % command)
-    gnuplot.stdin.write("%s\n" % command)
+    try:
+        command = b"%s\n" % command
+    except:
+        command = b"%s\n" % str.encode(command)
+    gnuplot.stdin.write(b"%s\n" % command)
 
 try:
     p = subprocess.Popen(["sar", "-u","-r", "1"], stdout=subprocess.PIPE, env = my_env)
@@ -71,7 +75,7 @@ except:
 
 print("%d" % os.getpid())
 
-machine = p.stdout.readline()
+machine = p.stdout.readline().decode()
 
 uname = machine.split(" ")[0:2]
 uname = "%s %s" % (uname[0], uname[1])
@@ -125,7 +129,7 @@ labels = []
 f.write("# machine: %s, cpu count: %d\n" % (uname, cpus))
 
 while 1:
-    rlist, _, _ = select([p.stdout, sys.stdin], [], [], 1)
+    rlist, _, _ = select([p.stdout, sys.stdin], [], [], 0.25)
     now = datetime.now()
     if sys.stdin in rlist:
         label_line = sys.stdin.readline().replace("\n", "")
@@ -137,9 +141,9 @@ while 1:
     if (p.stdout not in rlist):
         continue
     now = "%04d-%02d-%02d" % (now.year, now.month, now.day);
-    cpu_names = p.stdout.readline().replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("\n", "").replace("%", "").split(" ")
+    cpu_names = p.stdout.readline().decode().replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("\n", "").replace("%", "").split(" ")
     cpu_names[0] = "time"
-    cpu_values = p.stdout.readline().replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("\n", "").replace("%", "").split(" ")
+    cpu_values = p.stdout.readline().decode().replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("\n", "").replace("%", "").split(" ")
     if START_DATE == "":
         START_DATE = "%s %s" % (now, cpu_values[0])
     cpu_values[0] = now + "-" + cpu_values[0]
@@ -147,9 +151,9 @@ while 1:
     AVERAGE_LOAD += float(cpu_data["user"])
     i = i + 1
     p.stdout.readline()
-    ram_names = p.stdout.readline().replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("\n", "").replace("%", "").split(" ")
+    ram_names = p.stdout.readline().decode().replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("\n", "").replace("%", "").split(" ")
     ram_names[0] = "time"
-    ram_values = p.stdout.readline().replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("\n", "").replace("%", "").split(" ")
+    ram_values = p.stdout.readline().decode().replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("\n", "").replace("%", "").split(" ")
     END_DATE = now + " " + ram_values[0]
     ram_values[0] = now + "-" + ram_values[0]
     ram_data = dict(zip(ram_names, ram_values))
