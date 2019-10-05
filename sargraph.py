@@ -5,7 +5,6 @@
 # License: Apache
 #
 
-from Gnuplot import Gnuplot, Data, File
 from datetime import datetime, timedelta
 from select import select
 import signal
@@ -35,6 +34,34 @@ TOTAL_RAM = 0
 with open("/proc/meminfo") as f:
     TOTAL_RAM = int(f.read().split("\n")[0].replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("  ", " ").replace(" kB", "").split(" ")[1])/1024.0/1024.0
 
+
+try:
+    p = subprocess.Popen(["gnuplot", "--version"], stdout=subprocess.PIPE)
+except:
+    print("Gnuplot not found")
+    sys.exit(1)
+
+VERSION_EXPECTED = [5, 2]
+
+version = p.stdout.readline().split(" ")[1].split(".")
+if (int(version[0]) < VERSION_EXPECTED[0]):
+    print("Gnuplot version too low. Need at least %d.%d found %s.%s" % (VERSION_EXPECTED[0], VERSION_EXPECTED[1], version[0], version[1]))
+    sys.exit(1)
+if (int(version[0]) == VERSION_EXPECTED[0]) and (int(version[1]) < VERSION_EXPECTED[1]):
+    print("Gnuplot version too low. Need at least %d.%d found %s.%s" % (VERSION_EXPECTED[0], VERSION_EXPECTED[1], version[0], version[1]))
+    sys.exit(1)
+    
+
+try:
+    gnuplot = subprocess.Popen(["gnuplot"], stdin=subprocess.PIPE)
+except:
+    print("Gnuplot not found")
+    sys.exit(1)
+
+def g(command):
+    print ("gnuplot> %s" % command)
+    gnuplot.stdin.write("%s\n" % command)
+
 try:
     p = subprocess.Popen(["sar", "-u","-r", "1"], stdout=subprocess.PIPE, env = my_env)
 except:
@@ -43,8 +70,6 @@ except:
 
 
 print("%d" % os.getpid())
-
-g = Gnuplot(debug=1)
 
 machine = p.stdout.readline()
 
@@ -99,7 +124,7 @@ labels = []
 f.write("# machine: %s, cpu count: %d\n" % (uname, cpus))
 
 while 1:
-    rlist, _, _ = select([p.stdout, sys.stdin], [], [], 1)
+    rlist, _, _ = select([p.stdout, sys.stdin], [], [], 0.5)
     now = datetime.now()
     if sys.stdin in rlist:
         label_line = sys.stdin.readline().replace("\n", "")
@@ -187,13 +212,13 @@ g("set object rectangle from graph 0, graph 0 to graph 1, graph 1 behind fillcol
 g("set object rectangle from '%s', 0 to '%s', 100 behind fillcolor rgb '#000000' fillstyle solid noborder" % (START_DATE.replace(" ", "-"), END_DATE.replace(" ", "-")))
 
 
-d1 = File("data.txt", using="1:2:2", title="cpu", with_="boxes palette")
-g.plot(d1)
+g("plot 'data.txt' using 1:2:2 title 'cpu' with boxes palette")
 
 g("set ylabel 'ram % usage'")
 g("set title 'ram usage (max = %.2f GB)'" % MAX_USED_RAM);
 
-d2 = File("data.txt", using="1:3:3", title="ram", with_="boxes palette")
-g.plot(d2)
+g("plot 'data.txt' using 1:3:3 title 'ram' with boxes palette")
+
+g("quit")
 
 
