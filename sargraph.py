@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 from fcntl import fcntl, F_GETFL, F_SETFL
+import time
 
 global die
 die = 0
@@ -53,18 +54,26 @@ if (int(version[0]) == VERSION_EXPECTED[0]) and (int(version[1]) < VERSION_EXPEC
     
 
 try:
-    gnuplot = subprocess.Popen(["gnuplot"], stdin=subprocess.PIPE)
+    gnuplot = subprocess.Popen(["gnuplot"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 except:
     print("Gnuplot not found")
     sys.exit(1)
 
 def g(command):
+    if not (gnuplot.poll() is None):
+        print("ERROR: gnuplot not running!")
+        return
     print ("gnuplot> %s" % command)
     try:
         command = b"%s\n" % command
     except:
         command = b"%s\n" % str.encode(command)
     gnuplot.stdin.write(b"%s\n" % command)
+    if command == b"quit\n":
+        while 1:
+            if not (gnuplot.poll() is None):
+                return
+            time.sleep(0.25)
 
 try:
     p = subprocess.Popen(["sar", "-u","-r", "1"], stdout=subprocess.PIPE, env = my_env)
