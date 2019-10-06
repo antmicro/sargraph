@@ -53,7 +53,7 @@ if len(sys.argv) > 1:
         sys.exit(1)
     if cmd == "start":
         print("Starting sargraph session '%s'" % sid)
-        p = subprocess.Popen(["screen", "-dmSL", sid, "-Logfile", "/dev/null", os.path.realpath(__file__)])
+        p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__file__)])
         while p.poll() is None:
             time.sleep(0.1)
         gpid = 0
