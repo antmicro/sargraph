@@ -68,13 +68,17 @@ if len(sys.argv) > 1:
             with open("data.txt", "r") as f:
                 gpid = int(f.readline().decode().split(", machine:")[0].split("pid: ")[1])
         except:
-            print("Error: cannot find pid.")
-            sys.exit(1)
+            print("Warning: cannot find pid. Probably 'data.txt' does not exist.")
+            gpid = -1
         p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "q\n"])
         while p.poll() is None:
             time.sleep(0.1)
-        while pid_running(gpid):
-            time.sleep(0.25)
+        if gpid == -1:
+            print("Waiting 3 seconds.")
+            time.sleep(3)
+        else:
+            while pid_running(gpid):
+                time.sleep(0.25)
     elif cmd == "label":
         print("Adding label '%s' to sargraph session '%s'." % (label, sid))
         p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "%s\n" % label])
