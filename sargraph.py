@@ -83,8 +83,7 @@ if len(sys.argv) > 1:
     else:
         print "Error: Unknown parameter '%s'" % cmd
         sys.exit(1)
-    sys.exit(1)
-
+    sys.exit(0)
 
 my_env = os.environ
 my_env["S_TIME_FORMAT"] = "ISO"
