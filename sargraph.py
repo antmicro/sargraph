@@ -27,6 +27,9 @@ def merge_dicts(x, y):
     res.update(y)
     return res
 
+def pid_running(pid):
+    return os.path.exists("/proc/%d" % pid)
+
 if len(sys.argv) > 1:
     sid = sys.argv[1]
     cmd = ""
@@ -50,16 +53,28 @@ if len(sys.argv) > 1:
         sys.exit(1)
     if cmd == "start":
         print("Starting sargraph session '%s'" % sid)
-        p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__file__)])
+        p = subprocess.Popen(["screen", "-dmSL", sid, "-Logfile", "/dev/null", os.path.realpath(__file__)])
         while p.poll() is None:
             time.sleep(0.1)
+        gpid = 0
+        j = 0
+        time.sleep(1)
+        print("Session '%s' started" % sid)
+
         
     elif cmd == "stop":
         print("Terminating sargraph session '%s'" % sid)
+        try:
+            with open("data.txt", "r") as f:
+                gpid = int(f.readline().decode().split(", machine:")[0].split("pid: ")[1])
+        except:
+            print("Error: cannot find pid.")
+            sys.exit(1)
         p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "q\n"])
         while p.poll() is None:
             time.sleep(0.1)
-        time.sleep(3) # TODO: work on that
+        while pid_running(gpid):
+            time.sleep(0.25)
     elif cmd == "label":
         print("Adding label '%s' to sargraph session '%s'." % (label, sid))
         p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "%s\n" % label])
@@ -135,6 +150,9 @@ uname = "%s %s" % (uname[0], uname[1])
 
 cpus = int(machine.split(" CPU)")[0].split("(")[-1])
 
+f = open("data.txt", "w")
+f.write("# pid: %d, machine: %s, cpu count: %d\n" % (os.getpid(), uname, cpus))
+f.close()
 
 p.stdout.readline()
 
@@ -168,8 +186,6 @@ g("set multiplot layout 2,1 title \"%s\"" % "\\n\\n\\n")
 signal.signal(signal.SIGTERM, kill_handler)
 i = 0
 
-f = open("data.txt", "w")
-
 START_DATE = ""
 END_DATE = ""
 MAX_USED_RAM = 0
@@ -178,8 +194,6 @@ AVERAGE_LOAD = 0.0
 flags = fcntl(sys.stdin, F_GETFL)
 fcntl(sys.stdin, F_SETFL, flags | os.O_NONBLOCK)
 labels = []
-
-f.write("# machine: %s, cpu count: %d\n" % (uname, cpus))
 
 while 1:
     rlist, _, _ = select([p.stdout, sys.stdin], [], [], 0.25)
@@ -190,7 +204,9 @@ while 1:
             die = 1
             break
         labels.append(["%04d-%02d-%02d-%02d:%02d:%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second), label_line])
+        f = open("data.txt", "a")
         f.write("# %04d-%02d-%02d-%02d:%02d:%02d label: %s\n" % (now.year, now.month, now.day, now.hour, now.minute, now.second, label_line))
+        f.close()
     if (p.stdout not in rlist):
         continue
     now = "%04d-%02d-%02d" % (now.year, now.month, now.day);
@@ -217,13 +233,14 @@ while 1:
         TOTAL_RAM = (int(values['kbmemused']) + int(values['kbmemfree'])) / 1024.0 / 1024.0
     if MAX_USED_RAM < int(values['kbmemused']):
         MAX_USED_RAM = int(values['kbmemused'])
+    f = open("data.txt", "a")
     f.write("%s %s %s\n" % (values["time"], values["user"], values["memused"]))
+    f.close()
 
     if die:
         break
 
 if i == 0:
-    f.close()
     g("quit")
     time.sleep(1)
     sys.exit(0)
@@ -235,8 +252,8 @@ sdt = datetime.strptime(START_DATE, '%Y-%m-%d %H:%M:%S')
 edt = datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
 delta_t = ((edt - sdt).total_seconds()) / 60.0
 
+f = open("data.txt", "a")
 f.write("# total ram: %.2f GB, max ram used: %.2f GB, avarage load: %.2f %%, duration: %.2f minutes\n" % (TOTAL_RAM, MAX_USED_RAM, AVERAGE_LOAD, delta_t))
-
 f.close()
 
 g("set title 'cpu load (avarage = %.2f %%)'" % AVERAGE_LOAD)
