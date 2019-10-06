@@ -27,6 +27,50 @@ def merge_dicts(x, y):
     res.update(y)
     return res
 
+if len(sys.argv) > 1:
+    sid = sys.argv[1]
+    cmd = ""
+    if len(sys.argv) > 2:
+        cmd = sys.argv[2]
+    else:
+        print("Error: command not provided.")
+        sys.exit(1)
+    if cmd == "label" and len(sys.argv) != 4:
+        print("Error: label command requires an additional parameter")
+        sys.exit(1)
+    if cmd == "label":
+        label = sys.argv[3]
+    try:
+        p = subprocess.Popen(["screen", "-v"], stdout=subprocess.PIPE)
+    except:
+        print("Error: 'screen' tool not found!")
+        sys.exit(1)
+    if p.stdout.readline().decode().split(" ")[0] != "Screen":
+        print "Error: 'screen' tool returned unknown output!"
+        sys.exit(1)
+    if cmd == "start":
+        print("Starting sargraph session '%s'" % sid)
+        p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__file__)])
+        while p.poll() is None:
+            time.sleep(0.1)
+        
+    elif cmd == "stop":
+        print("Terminating sargraph session '%s'" % sid)
+        p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "q\n"])
+        while p.poll() is None:
+            time.sleep(0.1)
+        time.sleep(3) # TODO: work on that
+    elif cmd == "label":
+        print("Adding label '%s' to sargraph session '%s'." % (label, sid))
+        p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "%s\n" % label])
+        while p.poll() is None:
+            time.sleep(0.1)
+    else:
+        print "Error: Unknown parameter '%s'" % cmd
+        sys.exit(1)
+    sys.exit(1)
+
+
 my_env = os.environ
 my_env["S_TIME_FORMAT"] = "ISO"
 
@@ -177,6 +221,12 @@ while 1:
 
     if die:
         break
+
+if i == 0:
+    f.close()
+    g("quit")
+    time.sleep(1)
+    sys.exit(0)
 
 AVERAGE_LOAD = AVERAGE_LOAD / float(i)
 MAX_USED_RAM = MAX_USED_RAM / 1024.0 / 1024.0

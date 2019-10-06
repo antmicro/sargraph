@@ -2,17 +2,21 @@
 
 This is a simple python tool that uses sysstat (sar) to plot cpu and ram usage.
 
-Best used with screen:
+Usage:
+```
+$ python sargraph.py [session_name] [command] [arg]
+```
+
+Background use (requires screen):
 
 ```
-$ screen -dmSL chart python sargraph.py
+$ python sargraph.py chart start
 $ sleep 1
-$ screen -S chart -X stuff "label1\n"
+$ python sargraph.py chart label "label1"
 $ sleep 1
-$ screen -S chart -X stuff "label2\n"
+$ python sargraph.py chart label "label2"
 $ sleep 1
-$ screen -S chart -X stuff "q\n"
-$ sleep 3
+$ python sargraph.py chart stop
 ```
 
 Or just:
