@@ -13,6 +13,7 @@ import subprocess
 import sys
 from fcntl import fcntl, F_GETFL, F_SETFL
 import time
+from socket import gethostname
 
 global die
 die = 0
@@ -153,6 +154,14 @@ uname = "%s %s" % (uname[0], uname[1])
 
 cpus = int(machine.split(" CPU)")[0].split("(")[-1])
 
+cpu_name = "unknown"
+
+with open("/proc/cpuinfo") as f:
+    for line in f:
+        if "model name" in line:
+            cpu_name = line.replace("\n", "").split(": ")[1]
+            break
+
 f = open("data.txt", "w")
 f.write("# pid: %d, machine: %s, cpu count: %d\n" % (os.getpid(), uname, cpus))
 f.close()
@@ -271,12 +280,8 @@ nedt = edt + timedelta(seconds = (seconds_between * 0.01))
 
 g("set xrange ['%s':'%s']" % (nsdt.strftime("%Y-%m-%d-%H:%M:%S"), nedt.strftime("%Y-%m-%d-%H:%M:%S")));
 
-
-now = datetime.now()
-now = "%04d-%02d-%02d %02d:%02d:%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second);
-
-
-g("set label 101 at screen 0.02, screen 0.95 \"Running on {/:Bold %s} at {/:Bold %s}, cpu count is {/:Bold %d}, total ram is {/:Bold %.2f GB}\\nduration: {/:Bold %s} .. {/:Bold %s} (%.2f minutes)\" tc rgb 'white'" % (uname, now, cpus, TOTAL_RAM, START_DATE, END_DATE, delta_t))
+g("set label 101 at screen 0.02, screen 0.95 'Running on {/:Bold %s} \@ {/:Bold %s}, {/:Bold %d} threads x {/:Bold %s}, total ram is {/:Bold %.2f GB}' tc rgb 'white'" % (gethostname(), uname, cpus, cpu_name, TOTAL_RAM))
+g("set label 102 at screen 0.02, screen 0.93 'duration: {/:Bold %s} .. {/:Bold %s} (%.2f minutes)' tc rgb 'white'" % (START_DATE, END_DATE, delta_t))
 
 i = 0
 for label in labels:
