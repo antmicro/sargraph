@@ -86,7 +86,7 @@ if len(sys.argv) > 1:
         while p.poll() is None:
             time.sleep(0.1)
     else:
-        print "Error: Unknown parameter '%s'" % cmd
+        print("Error: Unknown parameter '%s'" % cmd)
         sys.exit(1)
     sys.exit(0)
 
