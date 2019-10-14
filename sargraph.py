@@ -50,7 +50,7 @@ if len(sys.argv) > 1:
         print("Error: 'screen' tool not found!")
         sys.exit(1)
     if p.stdout.readline().decode().split(" ")[0] != "Screen":
-        print "Error: 'screen' tool returned unknown output!"
+        print("Error: 'screen' tool returned unknown output!")
         sys.exit(1)
     if cmd == "start":
         print("Starting sargraph session '%s'" % sid)
