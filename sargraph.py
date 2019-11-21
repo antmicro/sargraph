@@ -31,6 +31,22 @@ def merge_dicts(x, y):
 def pid_running(pid):
     return os.path.exists("/proc/%d" % pid)
 
+try:
+    p = subprocess.Popen(["gnuplot", "--version"], stdout=subprocess.PIPE)
+except:
+    print("Gnuplot not found")
+    sys.exit(1)
+
+VERSION_EXPECTED = [5, 2]
+
+version = p.stdout.readline().decode().split(" ")[1].split(".")
+if (int(version[0]) < VERSION_EXPECTED[0]):
+    print("Gnuplot version too low. Need at least %d.%d found %s.%s" % (VERSION_EXPECTED[0], VERSION_EXPECTED[1], version[0], version[1]))
+    sys.exit(1)
+if (int(version[0]) == VERSION_EXPECTED[0]) and (int(version[1]) < VERSION_EXPECTED[1]):
+    print("Gnuplot version too low. Need at least %d.%d found %s.%s" % (VERSION_EXPECTED[0], VERSION_EXPECTED[1], version[0], version[1]))
+    sys.exit(1)
+    
 if len(sys.argv) > 1:
     sid = sys.argv[1]
     cmd = ""
@@ -54,6 +70,7 @@ if len(sys.argv) > 1:
         sys.exit(1)
     if cmd == "start":
         print("Starting sargraph session '%s'" % sid)
+        print(["screen", "-dmSL", sid, os.path.realpath(__file__)])
         p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__file__)])
         while p.poll() is None:
             time.sleep(0.1)
@@ -97,24 +114,6 @@ TOTAL_RAM = 0
 
 with open("/proc/meminfo") as f:
     TOTAL_RAM = int(f.read().split("\n")[0].replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("  ", " ").replace(" kB", "").split(" ")[1])/1024.0/1024.0
-
-
-try:
-    p = subprocess.Popen(["gnuplot", "--version"], stdout=subprocess.PIPE)
-except:
-    print("Gnuplot not found")
-    sys.exit(1)
-
-VERSION_EXPECTED = [5, 2]
-
-version = p.stdout.readline().decode().split(" ")[1].split(".")
-if (int(version[0]) < VERSION_EXPECTED[0]):
-    print("Gnuplot version too low. Need at least %d.%d found %s.%s" % (VERSION_EXPECTED[0], VERSION_EXPECTED[1], version[0], version[1]))
-    sys.exit(1)
-if (int(version[0]) == VERSION_EXPECTED[0]) and (int(version[1]) < VERSION_EXPECTED[1]):
-    print("Gnuplot version too low. Need at least %d.%d found %s.%s" % (VERSION_EXPECTED[0], VERSION_EXPECTED[1], version[0], version[1]))
-    sys.exit(1)
-    
 
 try:
     gnuplot = subprocess.Popen(["gnuplot"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
