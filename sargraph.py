@@ -34,19 +34,25 @@ def pid_running(pid):
 try:
     p = subprocess.Popen(["gnuplot", "--version"], stdout=subprocess.PIPE)
 except:
-    print("Gnuplot not found")
+    print("Error: Gnuplot not found")
     sys.exit(1)
 
 VERSION_EXPECTED = [5, 2]
 
 version = p.stdout.readline().decode().split(" ")[1].split(".")
 if (int(version[0]) < VERSION_EXPECTED[0]):
-    print("Gnuplot version too low. Need at least %d.%d found %s.%s" % (VERSION_EXPECTED[0], VERSION_EXPECTED[1], version[0], version[1]))
+    print("Error: Gnuplot version too low. Need at least %d.%d found %s.%s" % (VERSION_EXPECTED[0], VERSION_EXPECTED[1], version[0], version[1]))
     sys.exit(1)
 if (int(version[0]) == VERSION_EXPECTED[0]) and (int(version[1]) < VERSION_EXPECTED[1]):
-    print("Gnuplot version too low. Need at least %d.%d found %s.%s" % (VERSION_EXPECTED[0], VERSION_EXPECTED[1], version[0], version[1]))
+    print("Error: Gnuplot version too low. Need at least %d.%d found %s.%s" % (VERSION_EXPECTED[0], VERSION_EXPECTED[1], version[0], version[1]))
     sys.exit(1)
     
+try:
+    p = subprocess.Popen(["sar", "-V"], stdout=subprocess.PIPE)
+except:
+    print("Error: sar not found")
+    sys.exit(1)
+
 if len(sys.argv) > 1:
     sid = sys.argv[1]
     cmd = ""
