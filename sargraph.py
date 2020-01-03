@@ -195,9 +195,6 @@ g("unset key")
 g("set rmargin 6")
 
 g("set terminal pngcairo size 1200,800 background '#222222' font 'Courier-New,8'")
-g("set output 'plot.png'")
-
-g("set multiplot layout 2,1 title \"%s\"" % "\\n\\n\\n")
 
 signal.signal(signal.SIGTERM, kill_handler)
 i = 0
@@ -260,6 +257,11 @@ if i == 0:
     g("quit")
     time.sleep(1)
     sys.exit(0)
+
+g("set output 'plot.png'")
+
+g("set multiplot layout 2,1 title \"%s\"" % "\\n\\n\\n")
+
 
 AVERAGE_LOAD = AVERAGE_LOAD / float(i)
 MAX_USED_RAM = MAX_USED_RAM / 1024.0 / 1024.0
