@@ -37,7 +37,7 @@ except:
     print("Error: Gnuplot not found")
     sys.exit(1)
 
-VERSION_EXPECTED = [5, 2]
+VERSION_EXPECTED = [5, 0]
 
 version = p.stdout.readline().decode().split(" ")[1].split(".")
 if (int(version[0]) < VERSION_EXPECTED[0]):
