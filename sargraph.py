@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #
-# (c) 2019 Antmicro <www.antmicro.com>
+# (c) 2019-2020 Antmicro <www.antmicro.com>
 # License: Apache
 #
 
@@ -87,11 +87,11 @@ if len(sys.argv) > 1:
         
     elif cmd == "stop":
         print("Terminating sargraph session '%s'" % sid)
+
         try:
-            with open("data.txt", "r") as f:
-                gpid = int(f.readline().decode().split(", machine:")[0].split("pid: ")[1])
+            gpid = int(os.popen("screen -ls | grep '.%s' | tr -d ' \t' | cut -f 1 -d '.'" % sid).read())
         except:
-            print("Warning: cannot find pid. Probably 'data.txt' does not exist.")
+            print("Warning: cannot find pid.")
             gpid = -1
         p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "q\n"])
         while p.poll() is None:
@@ -100,6 +100,7 @@ if len(sys.argv) > 1:
             print("Waiting 3 seconds.")
             time.sleep(3)
         else:
+            #print("Waiting for pid %d" % gpid)
             while pid_running(gpid):
                 time.sleep(0.25)
     elif cmd == "label":
@@ -136,6 +137,7 @@ def g(command):
     except:
         command = b"%s\n" % str.encode(command)
     gnuplot.stdin.write(b"%s\n" % command)
+    gnuplot.stdin.flush()
     if command == b"quit\n":
         while 1:
             if not (gnuplot.poll() is None):
