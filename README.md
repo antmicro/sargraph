@@ -1,13 +1,13 @@
 # sargraph
 
-This is a simple python tool that uses sysstat (sar) to plot cpu and ram usage.
+This is a simple python tool that uses "sysstat" ("sar") and "gnuplot" to plot cpu and ram usage.
 
 Usage:
 ```
 $ python sargraph.py [session_name] [command] [arg]
 ```
 
-Background use (requires screen):
+Background use (requires "screen" tool):
 
 ```
 $ python sargraph.py chart start
@@ -32,6 +32,6 @@ $ python sargraph.py
 ```
 
 
-(c) 2019 Antmicro <www.antmicro.com>
+Copyright (c) 2019-2020 Antmicro <www.antmicro.com>
 
 Licensed under Apache License.
