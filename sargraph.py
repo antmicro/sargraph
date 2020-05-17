@@ -46,7 +46,16 @@ if (int(version[0]) < VERSION_EXPECTED[0]):
 if (int(version[0]) == VERSION_EXPECTED[0]) and (int(version[1]) < VERSION_EXPECTED[1]):
     print("Error: Gnuplot version too low. Need at least %d.%d found %s.%s" % (VERSION_EXPECTED[0], VERSION_EXPECTED[1], version[0], version[1]))
     sys.exit(1)
-    
+
+OUTPUT_TYPE="pngcairo"
+OUTPUT_EXT="png"
+try:
+    if os.environ["SARGRAPH_OUTPUT_TYPE"] == "svg":
+        OUTPUT_TYPE="svg"
+        OUTPUT_EXT="svg"
+except:
+    pass
+
 try:
     p = subprocess.Popen(["sar", "-V"], stdout=subprocess.PIPE)
 except:
@@ -196,7 +205,7 @@ g("unset colorbox")
 g("unset key")
 g("set rmargin 6")
 
-g("set terminal pngcairo size 1200,800 background '#222222' font 'Courier-New,8'")
+g("set terminal %s size 1200,800 background '#222222' font 'Courier-New,8'" % OUTPUT_TYPE)
 
 signal.signal(signal.SIGTERM, kill_handler)
 i = 0
@@ -260,7 +269,7 @@ if i == 0:
     time.sleep(1)
     sys.exit(0)
 
-g("set output 'plot.png'")
+g("set output 'plot.%s'" % OUTPUT_EXT)
 
 g("set multiplot layout 2,1 title \"%s\"" % "\\n\\n\\n")
 
