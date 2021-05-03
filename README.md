@@ -33,7 +33,3 @@ $ python sargraph.py
 # wait until sargraph generates plot.png
 ```
 
-
-Copyright (c) 2019-2020 Antmicro <www.antmicro.com>
-
-Licensed under Apache License.
