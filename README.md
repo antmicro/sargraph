@@ -12,18 +12,18 @@ $ python sargraph.py [session_name] [command] [arg]
 Background use (requires "screen" tool):
 
 ```
-$ python sargraph.py chart start
+$ python3 sargraph.py chart start
 $ sleep 1
-$ python sargraph.py chart label "label1"
+$ python3 sargraph.py chart label "label1"
 $ sleep 1
-$ python sargraph.py chart label "label2"
+$ python3 sargraph.py chart label "label2"
 $ sleep 1
-$ python sargraph.py chart stop
+$ python3 sargraph.py chart stop
 ```
 
 Or just:
 ```
-$ python sargraph.py
+$ python3 sargraph.py
 # wait 1 sec
 # type label1\n
 # wait 1 sec
