@@ -28,14 +28,21 @@ def merge_dicts(x, y):
     res.update(y)
     return res
 
+
 def pid_running(pid):
     return os.path.exists("/proc/%d" % pid)
 
-try:
-    p = subprocess.Popen(["gnuplot", "--version"], stdout=subprocess.PIPE)
-except:
-    print("Error: Gnuplot not found")
-    sys.exit(1)
+
+def run_process(*argv, **kwargs):
+    try:
+        p = subprocess.Popen(argv, **kwargs)
+    except:
+        print("Error: %s not found" % argv[0])
+        sys.exit(1)
+    return p
+
+
+p = run_process("gnuplot", "--version", stdout=subprocess.PIPE)
 
 VERSION_EXPECTED = [5, 0]
 
@@ -56,11 +63,7 @@ try:
 except:
     pass
 
-try:
-    p = subprocess.Popen(["sar", "-V"], stdout=subprocess.PIPE)
-except:
-    print("Error: sar not found")
-    sys.exit(1)
+p = run_process("sar", "-V", stdout=subprocess.PIPE)
 
 if len(sys.argv) > 1:
     sid = sys.argv[1]
@@ -92,8 +95,6 @@ if len(sys.argv) > 1:
         j = 0
         time.sleep(1)
         print("Session '%s' started" % sid)
-
-        
     elif cmd == "stop":
         print("Terminating sargraph session '%s'" % sid)
 
@@ -130,11 +131,7 @@ TOTAL_RAM = 0
 with open("/proc/meminfo") as f:
     TOTAL_RAM = int(f.read().split("\n")[0].replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("  ", " ").replace(" kB", "").split(" ")[1])/1024.0/1024.0
 
-try:
-    gnuplot = subprocess.Popen(["gnuplot"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-except:
-    print("Gnuplot not found")
-    sys.exit(1)
+gnuplot = run_process("gnuplot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
 def g(command):
     if not (gnuplot.poll() is None):
@@ -153,12 +150,7 @@ def g(command):
                 return
             time.sleep(0.25)
 
-try:
-    p = subprocess.Popen(["sar", "-u","-r", "1"], stdout=subprocess.PIPE, env = my_env)
-except:
-    print("Error starting sar")
-    sys.exit(1)
-
+p = run_process("sar", "-u","-r", "1", stdout=subprocess.PIPE, env=my_env)
 
 print("%d" % os.getpid())
 
