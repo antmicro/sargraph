@@ -48,7 +48,7 @@ def g(command):
     global gnuplot
 
     if not (gnuplot.poll() is None):
-        print("ERROR: gnuplot not running!")
+        print("Error: gnuplot not running!")
         return
     print ("gnuplot> %s" % command)
     try:
