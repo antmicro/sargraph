@@ -87,23 +87,19 @@ except:
 p = run_process("sar", "-V", stdout=subprocess.PIPE)
 
 if len(sys.argv) > 1:
-    sid = sys.argv[1]
-    cmd = ""
-    if len(sys.argv) > 2:
-        cmd = sys.argv[2]
-    else:
-        print("Error: command not provided.")
-        sys.exit(1)
-    if cmd == "label" and len(sys.argv) != 4:
-        print("Error: label command requires an additional parameter")
-        sys.exit(1)
-    if cmd == "label":
-        label = sys.argv[3]
-
     p = run_process("screen", "-v", stdout=subprocess.PIPE)
-    if p.stdout.readline().decode().split(" ")[0] != "Screen":
+    version = search("Screen version {major:d}", p.stdout.readline().decode())
+    if version is None:
         print("Error: 'screen' tool returned unknown output!")
         sys.exit(1)
+
+    if len(sys.argv) < 3:
+        print("Error: command not provided.")
+        sys.exit(1)
+
+    sid = sys.argv[1]
+    cmd = sys.argv[2]
+
     if cmd == "start":
         print("Starting sargraph session '%s'" % sid)
         p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__file__)])
@@ -132,6 +128,11 @@ if len(sys.argv) > 1:
             while pid_running(gpid):
                 time.sleep(0.25)
     elif cmd == "label":
+        if len(sys.argv) < 4:
+            print("Error: label command requires an additional parameter")
+            sys.exit(1)
+        label = sys.argv[3]
+
         print("Adding label '%s' to sargraph session '%s'." % (label, sid))
         p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "%s\n" % label])
         while p.poll() is None:
