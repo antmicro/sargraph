@@ -15,6 +15,8 @@ from fcntl import fcntl, F_GETFL, F_SETFL
 import time
 from socket import gethostname
 
+global gnuplot
+
 global die
 die = 0
 
@@ -40,6 +42,26 @@ def run_process(*argv, **kwargs):
         print("Error: %s not found" % argv[0])
         sys.exit(1)
     return p
+
+
+def g(command):
+    global gnuplot
+
+    if not (gnuplot.poll() is None):
+        print("ERROR: gnuplot not running!")
+        return
+    print ("gnuplot> %s" % command)
+    try:
+        command = b"%s\n" % command
+    except:
+        command = b"%s\n" % str.encode(command)
+    gnuplot.stdin.write(b"%s\n" % command)
+    gnuplot.stdin.flush()
+    if command == b"quit\n":
+        while 1:
+            if not (gnuplot.poll() is None):
+                return
+            time.sleep(0.25)
 
 
 p = run_process("gnuplot", "--version", stdout=subprocess.PIPE)
@@ -132,23 +154,6 @@ with open("/proc/meminfo") as f:
     TOTAL_RAM = int(f.read().split("\n")[0].replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("  ", " ").replace(" kB", "").split(" ")[1])/1024.0/1024.0
 
 gnuplot = run_process("gnuplot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-
-def g(command):
-    if not (gnuplot.poll() is None):
-        print("ERROR: gnuplot not running!")
-        return
-    print ("gnuplot> %s" % command)
-    try:
-        command = b"%s\n" % command
-    except:
-        command = b"%s\n" % str.encode(command)
-    gnuplot.stdin.write(b"%s\n" % command)
-    gnuplot.stdin.flush()
-    if command == b"quit\n":
-        while 1:
-            if not (gnuplot.poll() is None):
-                return
-            time.sleep(0.25)
 
 p = run_process("sar", "-u","-r", "1", stdout=subprocess.PIPE, env=my_env)
 
