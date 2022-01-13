@@ -36,10 +36,12 @@ def merge_dicts(x, y):
     return res
 
 
+# Check if a process is running
 def pid_running(pid):
     return os.path.exists("/proc/%d" % pid)
 
 
+# Run process, return subprocess object on success, exit script on fail
 def run_process(*argv, **kwargs):
     try:
         p = subprocess.Popen(argv, **kwargs)
@@ -49,6 +51,7 @@ def run_process(*argv, **kwargs):
     return p
 
 
+# Run a command in a running gnuplot process
 def g(command):
     global gnuplot
 
@@ -68,12 +71,13 @@ def g(command):
             time.sleep(0.25)
 
 
+# Check if the avaliable gnuplot has a required version
 p = run_process("gnuplot", "--version", stdout=subprocess.PIPE)
-
 version = search("gnuplot {:f}", p.stdout.readline().decode())
 if version[0] < GNUPLOT_VERSION_EXPECTED:
     print("Error: Gnuplot version too low. Need at least %g found %g" % (GNUPLOT_VERSION_EXPECTED, version[0]))
     sys.exit(1)
+
 
 OUTPUT_TYPE="pngcairo"
 OUTPUT_EXT="png"
@@ -86,17 +90,21 @@ except:
 
 p = run_process("sar", "-V", stdout=subprocess.PIPE)
 
+# If the script was run with parameters, handle them
 if len(sys.argv) > 1:
+    # Check if screen provides expected output
     p = run_process("screen", "-v", stdout=subprocess.PIPE)
     version = search("Screen version {major:d}", p.stdout.readline().decode())
     if version is None:
         print("Error: 'screen' tool returned unknown output!")
         sys.exit(1)
 
+    # Check if a command was provided
     if len(sys.argv) < 3:
         print("Error: command not provided.")
         sys.exit(1)
 
+    # Get session name and command name
     sid = sys.argv[1]
     cmd = sys.argv[2]
 
@@ -128,6 +136,7 @@ if len(sys.argv) > 1:
             while pid_running(gpid):
                 time.sleep(0.25)
     elif cmd == "label":
+        # Check if the label name was provided
         if len(sys.argv) < 4:
             print("Error: label command requires an additional parameter")
             sys.exit(1)
