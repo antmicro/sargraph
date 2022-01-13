@@ -5,19 +5,24 @@
 # License: Apache
 #
 
-from datetime import datetime, timedelta
-from select import select
+
 import signal
 import os
 import subprocess
 import sys
-from fcntl import fcntl, F_GETFL, F_SETFL
 import time
+
+from datetime import datetime, timedelta
+from select import select
+from fcntl import fcntl, F_GETFL, F_SETFL
 from socket import gethostname
+from parse import search
+
+GNUPLOT_VERSION_EXPECTED = 5.0
 
 global gnuplot
-
 global die
+
 die = 0
 
 def kill_handler(a, b):
@@ -39,7 +44,7 @@ def run_process(*argv, **kwargs):
     try:
         p = subprocess.Popen(argv, **kwargs)
     except:
-        print("Error: %s not found" % argv[0])
+        print("Error: '%s' tool not found" % argv[0])
         sys.exit(1)
     return p
 
@@ -57,23 +62,17 @@ def g(command):
         command = b"%s\n" % str.encode(command)
     gnuplot.stdin.write(b"%s\n" % command)
     gnuplot.stdin.flush()
+
     if command == b"quit\n":
-        while 1:
-            if not (gnuplot.poll() is None):
-                return
+        while gnuplot.poll() is None:
             time.sleep(0.25)
 
 
 p = run_process("gnuplot", "--version", stdout=subprocess.PIPE)
 
-VERSION_EXPECTED = [5, 0]
-
-version = p.stdout.readline().decode().split(" ")[1].split(".")
-if (int(version[0]) < VERSION_EXPECTED[0]):
-    print("Error: Gnuplot version too low. Need at least %d.%d found %s.%s" % (VERSION_EXPECTED[0], VERSION_EXPECTED[1], version[0], version[1]))
-    sys.exit(1)
-if (int(version[0]) == VERSION_EXPECTED[0]) and (int(version[1]) < VERSION_EXPECTED[1]):
-    print("Error: Gnuplot version too low. Need at least %d.%d found %s.%s" % (VERSION_EXPECTED[0], VERSION_EXPECTED[1], version[0], version[1]))
+version = search("gnuplot {:f}", p.stdout.readline().decode())
+if version[0] < GNUPLOT_VERSION_EXPECTED:
+    print("Error: Gnuplot version too low. Need at least %g found %g" % (GNUPLOT_VERSION_EXPECTED, version[0]))
     sys.exit(1)
 
 OUTPUT_TYPE="pngcairo"
@@ -100,11 +99,8 @@ if len(sys.argv) > 1:
         sys.exit(1)
     if cmd == "label":
         label = sys.argv[3]
-    try:
-        p = subprocess.Popen(["screen", "-v"], stdout=subprocess.PIPE)
-    except:
-        print("Error: 'screen' tool not found!")
-        sys.exit(1)
+
+    p = run_process("screen", "-v", stdout=subprocess.PIPE)
     if p.stdout.readline().decode().split(" ")[0] != "Screen":
         print("Error: 'screen' tool returned unknown output!")
         sys.exit(1)
