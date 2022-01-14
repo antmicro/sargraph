@@ -36,6 +36,10 @@ def merge_dicts(x, y):
     return res
 
 
+def rename_key(d, old, new):
+    d[new] = d.pop(old)
+
+
 # Check if a process is running
 def pid_running(pid):
     return os.path.exists("/proc/%d" % pid)
@@ -55,9 +59,12 @@ def run_process(*argv, **kwargs):
 def read_table(f):
     # Find the header
     while True:
-        header = f.readline().split()
+        header = f.readline().decode().split()
         if len(header) > 0:
             break
+
+    # The first columns is always just time
+    header[0] = 'time'
 
     table = {}
     for title in header:
@@ -65,9 +72,10 @@ def read_table(f):
 
     # Read rows
     while True:
-        row = readline.split()
+        row = f.readline().decode().split()
         if len(row) <= 0:
             break
+
         for i, value in enumerate(row):
             table[header[i]].append(value)
 
@@ -263,32 +271,30 @@ while 1:
         f.close()
     if (p.stdout not in rlist):
         continue
+
     now = "%04d-%02d-%02d" % (now.year, now.month, now.day);
-    cpu_names = p.stdout.readline().decode().replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("\n", "").replace("%", "").split(" ")
-    cpu_names[0] = "time"
-    cpu_values = p.stdout.readline().decode().replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("\n", "").replace("%", "").split(" ")
+    cpu_data = read_table(p.stdout)
+
     if START_DATE == "":
-        START_DATE = "%s %s" % (now, cpu_values[0])
-    cpu_values[0] = now + "-" + cpu_values[0]
-    cpu_data = dict(zip(cpu_names, cpu_values))
-    AVERAGE_LOAD += float(cpu_data["user"])
+        START_DATE = "%s %s" % (now, cpu_data['time'][0])
+    cpu_data['time'][0] = now + "-" + cpu_data['time'][0]
+
+    AVERAGE_LOAD += float(cpu_data["%user"][0])
     i = i + 1
-    p.stdout.readline()
-    ram_names = p.stdout.readline().decode().replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("\n", "").replace("%", "").split(" ")
-    ram_names[0] = "time"
-    ram_values = p.stdout.readline().decode().replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("\n", "").replace("%", "").split(" ")
-    END_DATE = now + " " + ram_values[0]
-    ram_values[0] = now + "-" + ram_values[0]
-    ram_data = dict(zip(ram_names, ram_values))
-    p.stdout.readline()
+
+    ram_data = read_table(p.stdout)
+
+    END_DATE = now + " " + ram_data['time'][0]
+    ram_data['time'][0] = now + "-" + ram_data['time'][0]
 
     values = merge_dicts(ram_data, cpu_data)
+
     if TOTAL_RAM == 0:
-        TOTAL_RAM = (int(values['kbmemused']) + int(values['kbmemfree'])) / 1024.0 / 1024.0
-    if MAX_USED_RAM < int(values['kbmemused']):
-        MAX_USED_RAM = int(values['kbmemused'])
+        TOTAL_RAM = (int(values['kbmemused'][0]) + int(values['kbmemfree'][0])) / 1024.0 / 1024.0
+    if MAX_USED_RAM < int(values['kbmemused'][0]):
+        MAX_USED_RAM = int(values['kbmemused'][0])
     f = open("data.txt", "a")
-    f.write("%s %s %s\n" % (values["time"], values["user"], values["memused"]))
+    f.write("%s %s %s\n" % (values["time"][0], values["%user"][0], values["%memused"][0]))
     f.close()
 
     if die:
