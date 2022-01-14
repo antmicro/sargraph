@@ -214,9 +214,8 @@ with open("/proc/cpuinfo") as f:
             cpu_name = line.replace("\n", "").split(": ")[1]
             break
 
-f = open("data.txt", "w")
-f.write("# pid: %d, machine: %s, cpu count: %d\n" % (os.getpid(), uname, cpus))
-f.close()
+with open("data.txt", "w") as f:
+    f.write("# pid: %d, machine: %s, cpu count: %d\n" % (os.getpid(), uname, cpus))
 
 p.stdout.readline()
 
@@ -266,9 +265,8 @@ while 1:
             die = 1
             break
         labels.append(["%04d-%02d-%02d-%02d:%02d:%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second), label_line])
-        f = open("data.txt", "a")
-        f.write("# %04d-%02d-%02d-%02d:%02d:%02d label: %s\n" % (now.year, now.month, now.day, now.hour, now.minute, now.second, label_line))
-        f.close()
+        with open("data.txt", "a") as f:
+            f.write("# %04d-%02d-%02d-%02d:%02d:%02d label: %s\n" % (now.year, now.month, now.day, now.hour, now.minute, now.second, label_line))
     if (p.stdout not in rlist):
         continue
 
@@ -293,9 +291,8 @@ while 1:
         TOTAL_RAM = (int(values['kbmemused'][0]) + int(values['kbmemfree'][0])) / 1024.0 / 1024.0
     if MAX_USED_RAM < int(values['kbmemused'][0]):
         MAX_USED_RAM = int(values['kbmemused'][0])
-    f = open("data.txt", "a")
-    f.write("%s %s %s\n" % (values["time"][0], values["%user"][0], values["%memused"][0]))
-    f.close()
+    with open("data.txt", "a") as f:
+        f.write("%s %s %s\n" % (values["time"][0], values["%user"][0], values["%memused"][0]))
 
     if die:
         break
@@ -317,9 +314,8 @@ sdt = datetime.strptime(START_DATE, '%Y-%m-%d %H:%M:%S')
 edt = datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
 delta_t = ((edt - sdt).total_seconds()) / 60.0
 
-f = open("data.txt", "a")
-f.write("# total ram: %.2f GB, max ram used: %.2f GB, avarage load: %.2f %%, duration: %.2f minutes\n" % (TOTAL_RAM, MAX_USED_RAM, AVERAGE_LOAD, delta_t))
-f.close()
+with open("data.txt", "a") as f:
+    f.write("# total ram: %.2f GB, max ram used: %.2f GB, avarage load: %.2f %%, duration: %.2f minutes\n" % (TOTAL_RAM, MAX_USED_RAM, AVERAGE_LOAD, delta_t))
 
 g("set title 'cpu load (avarage = %.2f %%)'" % AVERAGE_LOAD)
 g("set title tc rgb 'white' font 'Courier-New,8'")
