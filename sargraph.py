@@ -20,6 +20,8 @@ from parse import search
 
 GNUPLOT_VERSION_EXPECTED = 5.0
 
+sys.stderr = open("log.txt", "w+")
+
 global gnuplot
 global die
 
@@ -195,7 +197,7 @@ with open("/proc/meminfo") as f:
     TOTAL_RAM = int(search("MemTotal:{:s}{mem:d}", f.read())["mem"]/1024.0/1024.0)
 
 
-p = run_process("sar", "-u","-r", "1", stdout=subprocess.PIPE, env=my_env)
+p = run_process("sar", "-F", "-u", "-r", "1", stdout=subprocess.PIPE, env=my_env)
 
 print("%d" % os.getpid())
 
@@ -248,8 +250,9 @@ i = 0
 
 START_DATE = ""
 END_DATE = ""
-MAX_USED_RAM = 0
 AVERAGE_LOAD = 0.0
+MAX_USED_RAM = 0
+MAX_USED_FS = 0
 
 flags = fcntl(sys.stdin, F_GETFL)
 fcntl(sys.stdin, F_SETFL, flags | os.O_NONBLOCK)
@@ -270,29 +273,34 @@ while 1:
     if (p.stdout not in rlist):
         continue
 
-    now = "%04d-%02d-%02d" % (now.year, now.month, now.day);
-    cpu_data = read_table(p.stdout)
+    now = "%04d-%02d-%02d" % (now.year, now.month, now.day)
 
+    # Read and process CPU data
+    cpu_data = read_table(p.stdout)
     if START_DATE == "":
         START_DATE = "%s %s" % (now, cpu_data['time'][0])
     cpu_data['time'][0] = now + "-" + cpu_data['time'][0]
-
     AVERAGE_LOAD += float(cpu_data["%user"][0])
     i = i + 1
 
+    # Read and process RAM data
     ram_data = read_table(p.stdout)
-
-    END_DATE = now + " " + ram_data['time'][0]
     ram_data['time'][0] = now + "-" + ram_data['time'][0]
-
-    values = merge_dicts(ram_data, cpu_data)
-
     if TOTAL_RAM == 0:
-        TOTAL_RAM = (int(values['kbmemused'][0]) + int(values['kbmemfree'][0])) / 1024.0 / 1024.0
-    if MAX_USED_RAM < int(values['kbmemused'][0]):
-        MAX_USED_RAM = int(values['kbmemused'][0])
+        TOTAL_RAM = (int(ram_data['kbmemused'][0]) + int(ram_data['kbmemfree'][0])) / 1024.0 / 1024.0
+    if MAX_USED_RAM < int(ram_data['kbmemused'][0]):
+        MAX_USED_RAM = int(ram_data['kbmemused'][0])
+
+    # Read and process FS data
+    fs_data = read_table(p.stdout)
+    END_DATE = now + " " + fs_data['time'][0]
+    fs_data['time'][0] = now + "-" + fs_data['time'][0]
+    if MAX_USED_FS < int(fs_data['MBfsused'][0]):
+        MAX_USED_FS = int(fs_data['MBfsused'][0])
+
+
     with open("data.txt", "a") as f:
-        f.write("%s %s %s\n" % (values["time"][0], values["%user"][0], values["%memused"][0]))
+        f.write("%s %s %s %s\n" % (cpu_data["time"][0], cpu_data["%user"][0], ram_data["%memused"][0], fs_data["%fsused"][0]))
 
     if die:
         break
@@ -304,7 +312,7 @@ if i == 0:
 
 g("set output 'plot.%s'" % OUTPUT_EXT)
 
-g("set multiplot layout 2,1 title \"%s\"" % "\\n\\n\\n")
+g("set multiplot layout 3,1 title \"%s\"" % "\\n\\n\\n")
 
 
 AVERAGE_LOAD = AVERAGE_LOAD / float(i)
@@ -346,7 +354,7 @@ if i > 0:
 else:
     g("set yrange [0:100]")
 
-g("set object rectangle from graph 0, graph 0 to graph 1, graph 1 behind fillcolor rgb '#111111' fillstyle solid noborder")
+g("set object rectangle from graph 0, graph 0 to graph 2, graph 2 behind fillcolor rgb '#111111' fillstyle solid noborder")
 g("set object rectangle from '%s', 0 to '%s', 100 behind fillcolor rgb '#000000' fillstyle solid noborder" % (START_DATE.replace(" ", "-"), END_DATE.replace(" ", "-")))
 
 
@@ -354,9 +362,12 @@ g("plot 'data.txt' using 1:2:2 title 'cpu' with boxes palette")
 
 g("set ylabel 'ram % usage'")
 g("set title 'ram usage (max = %.2f GB)'" % MAX_USED_RAM);
-
 g("plot 'data.txt' using 1:3:3 title 'ram' with boxes palette")
+
+g("set ylabel '%s %% usage'" % fs_data['FILESYSTEM'][0])
+g("set title '%s usage (max = %.2f MB)'" % (fs_data['FILESYSTEM'][0], MAX_USED_FS));
+g("plot 'data.txt' using 1:4:4 title 'fs' with boxes palette")
+
 g("unset multiplot")
 g("unset output")
 g("quit")
-
