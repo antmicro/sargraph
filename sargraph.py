@@ -51,6 +51,29 @@ def run_process(*argv, **kwargs):
     return p
 
 
+# Read a single table from sar output
+def read_table(f):
+    # Find the header
+    while True:
+        header = f.readline().split()
+        if len(header) > 0:
+            break
+
+    table = {}
+    for title in header:
+        table[title] = []
+
+    # Read rows
+    while True:
+        row = readline.split()
+        if len(row) <= 0:
+            break
+        for i, value in enumerate(row):
+            table[header[i]].append(value)
+
+    return table
+
+
 # Run a command in a running gnuplot process
 def g(command):
     global gnuplot
@@ -151,15 +174,18 @@ if len(sys.argv) > 1:
         sys.exit(1)
     sys.exit(0)
 
+# If the script runs in a screen session, initialize the plot and gather data
+
+gnuplot = run_process("gnuplot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
 my_env = os.environ
 my_env["S_TIME_FORMAT"] = "ISO"
 
 TOTAL_RAM = 0
 
 with open("/proc/meminfo") as f:
-    TOTAL_RAM = int(f.read().split("\n")[0].replace("  ", " ").replace("  ", " ").replace("  ", " ").replace("  ", " ").replace(" kB", "").split(" ")[1])/1024.0/1024.0
+    TOTAL_RAM = int(search("MemTotal:{:s}{mem:d}", f.read())["mem"]/1024.0/1024.0)
 
-gnuplot = run_process("gnuplot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
 p = run_process("sar", "-u","-r", "1", stdout=subprocess.PIPE, env=my_env)
 
@@ -222,6 +248,7 @@ flags = fcntl(sys.stdin, F_GETFL)
 fcntl(sys.stdin, F_SETFL, flags | os.O_NONBLOCK)
 labels = []
 
+# Gather data from sar output
 while 1:
     rlist, _, _ = select([p.stdout, sys.stdin], [], [], 0.25)
     now = datetime.now()
