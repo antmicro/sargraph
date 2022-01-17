@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from select import select
 from fcntl import fcntl, F_GETFL, F_SETFL
 from socket import gethostname
-from parse import search
+from re import search
 
 GNUPLOT_VERSION_EXPECTED = 5.0
 
@@ -45,6 +45,18 @@ def run_process(*argv, **kwargs):
         print("Error: '%s' tool not found" % argv[0])
         sys.exit(1)
     return p
+
+
+# Get the first group from a given match and convert to required type
+def scan(regex, conv, string):
+    match = search(regex, string)
+    if not match:
+        return None
+    try:
+        value = conv(match.group(1))
+    except ValueError:
+        return None
+    return value
 
 
 # Read a single table from sar output
@@ -96,8 +108,8 @@ def g(command):
 
 # Check if the avaliable gnuplot has a required version
 p = run_process("gnuplot", "--version", stdout=subprocess.PIPE)
-version = search("gnuplot {:f}", p.stdout.readline().decode())
-if version[0] < GNUPLOT_VERSION_EXPECTED:
+version = scan(r"gnuplot (\S+)", float, p.stdout.readline().decode())
+if version < GNUPLOT_VERSION_EXPECTED:
     print("Error: Gnuplot version too low. Need at least %g found %g" % (GNUPLOT_VERSION_EXPECTED, version[0]))
     sys.exit(1)
 
@@ -117,7 +129,7 @@ p = run_process("sar", "-V", stdout=subprocess.PIPE)
 if len(sys.argv) > 1:
     # Check if screen provides expected output
     p = run_process("screen", "-v", stdout=subprocess.PIPE)
-    version = search("Screen version {major:d}", p.stdout.readline().decode())
+    version = scan("Screen version (\d+)", int, p.stdout.readline().decode())
     if version is None:
         print("Error: 'screen' tool returned unknown output!")
         sys.exit(1)
@@ -184,7 +196,7 @@ my_env["S_TIME_FORMAT"] = "ISO"
 TOTAL_RAM = 0
 
 with open("/proc/meminfo") as f:
-    TOTAL_RAM = int(search("MemTotal:{:s}{mem:d}", f.read())["mem"]/1024.0/1024.0)
+    TOTAL_RAM = int(scan("MemTotal:\s+(\d+)", float, f.read())/1024/1024)
 
 
 p = run_process("sar", "-F", "-u", "-r", "1", stdout=subprocess.PIPE, env=my_env)
