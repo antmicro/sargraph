@@ -32,16 +32,6 @@ def kill_handler(a, b):
         die = 1
 
 
-def merge_dicts(x, y):
-    res = x.copy()
-    res.update(y)
-    return res
-
-
-def rename_key(d, old, new):
-    d[new] = d.pop(old)
-
-
 # Check if a process is running
 def pid_running(pid):
     return os.path.exists("/proc/%d" % pid)
