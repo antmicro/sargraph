@@ -6,8 +6,9 @@
 #
 
 
-import signal
+import argparse
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -18,14 +19,19 @@ from fcntl import fcntl, F_GETFL, F_SETFL
 from socket import gethostname
 from re import search
 
-GNUPLOT_VERSION_EXPECTED = 5.0
-
-sys.stderr = open("log.txt", "w+")
-
 global gnuplot
 global die
 
 die = 0
+
+GNUPLOT_VERSION_EXPECTED = 5.0
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('session', metavar='SESSION-NAME', type=str, nargs='?', default=None, help='sargraph session name')
+parser.add_argument('command', metavar='COMMAND',      type=str, nargs='*',               help='send command')
+args = parser.parse_args()
+
 
 # Handle SIGTERM
 def kill_handler(a, b):
@@ -127,7 +133,7 @@ except:
 p = run_process("sar", "-V", stdout=subprocess.PIPE)
 
 # If the script was run with parameters, handle them
-if len(sys.argv) > 1:
+if args.session:
     # Check if screen provides expected output
     p = run_process("screen", "-v", stdout=subprocess.PIPE)
     version = scan("Screen version (\d+)", int, p.stdout.readline().decode())
@@ -136,15 +142,15 @@ if len(sys.argv) > 1:
         sys.exit(1)
 
     # Check if a command was provided
-    if len(sys.argv) < 3:
+    if len(args.command) <= 0:
         print("Error: command not provided.")
         sys.exit(1)
 
     # Get session name and command name
-    sid = sys.argv[1]
-    cmd = sys.argv[2]
+    sid = args.session
+    cmd = args.command
 
-    if cmd == "start":
+    if cmd[0] == "start":
         print("Starting sargraph session '%s'" % sid)
         p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__file__)])
         while p.poll() is None:
@@ -153,7 +159,7 @@ if len(sys.argv) > 1:
         j = 0
         time.sleep(1)
         print("Session '%s' started" % sid)
-    elif cmd == "stop":
+    elif cmd[0] == "stop":
         print("Terminating sargraph session '%s'" % sid)
 
         try:
@@ -171,19 +177,19 @@ if len(sys.argv) > 1:
             #print("Waiting for pid %d" % gpid)
             while pid_running(gpid):
                 time.sleep(0.25)
-    elif cmd == "label":
+    elif cmd[0] == "label":
         # Check if the label name was provided
-        if len(sys.argv) < 4:
+        if len(cmd) < 2:
             print("Error: label command requires an additional parameter")
             sys.exit(1)
-        label = sys.argv[3]
+        label = cmd[1]
 
         print("Adding label '%s' to sargraph session '%s'." % (label, sid))
         p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "%s\n" % label])
         while p.poll() is None:
             time.sleep(0.1)
     else:
-        print("Error: Unknown parameter '%s'" % cmd)
+        print("Error: Unknown command '%s'" % cmd[0])
         sys.exit(1)
     sys.exit(0)
 
