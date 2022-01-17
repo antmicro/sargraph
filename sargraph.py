@@ -27,6 +27,7 @@ global die
 
 die = 0
 
+# Handle SIGTERM
 def kill_handler(a, b):
         global die
         die = 1
