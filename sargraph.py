@@ -298,19 +298,18 @@ while 1:
     if (p.stdout not in rlist):
         continue
 
-    now = "%04d-%02d-%02d" % (now.year, now.month, now.day)
+    date = "%04d-%02d-%02d" % (now.year, now.month, now.day)
+    daytime = "%02d:%02d:%02d" % (now.hour, now.minute, now.second)
 
     # Read and process CPU data
     cpu_data = read_table(p.stdout)
     if START_DATE == "":
-        START_DATE = "%s %s" % (now, cpu_data['time'][0])
-    cpu_data['time'][0] = now + "-" + cpu_data['time'][0]
+        START_DATE = date + " " + daytime
     AVERAGE_LOAD += float(cpu_data["%user"][0])
     i = i + 1
 
     # Read and process RAM data
     ram_data = read_table(p.stdout)
-    ram_data['time'][0] = now + "-" + ram_data['time'][0]
     if TOTAL_RAM == 0:
         TOTAL_RAM = (int(ram_data['kbmemused'][0]) + int(ram_data['kbmemfree'][0])) / 1024.0 / 1024.0
     if MAX_USED_RAM < int(ram_data['kbmemused'][0]):
@@ -320,13 +319,14 @@ while 1:
     fs_data = read_table(p.stdout)
     if FS_SAR_INDEX is None:
       FS_SAR_INDEX = fs_data['FILESYSTEM'].index(args.fsdev)
-    END_DATE = now + " " + fs_data['time'][FS_SAR_INDEX]
-    fs_data['time'][FS_SAR_INDEX] = now + "-" + fs_data['time'][FS_SAR_INDEX]
     if MAX_USED_FS < int(fs_data['MBfsused'][FS_SAR_INDEX]):
         MAX_USED_FS = int(fs_data['MBfsused'][FS_SAR_INDEX])
 
+    END_DATE = date + " " + daytime
+    timestamp = date + "-" + daytime
+
     with open("data.txt", "a") as f:
-        f.write("%s %s %s %s\n" % (cpu_data["time"][0], cpu_data["%user"][0], ram_data["%memused"][0], fs_data["%fsused"][FS_SAR_INDEX]))
+        f.write("%s %s %s %s\n" % (timestamp, cpu_data["%user"][0], ram_data["%memused"][0], fs_data["%fsused"][FS_SAR_INDEX]))
 
     if die:
         break
