@@ -349,9 +349,9 @@ edt = datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
 delta_t = ((edt - sdt).total_seconds()) / 60.0
 
 with open("data.txt", "a") as f:
-    f.write("# total ram: %.2f GB, max ram used: %.2f GB, avarage load: %.2f %%, duration: %.2f minutes\n" % (TOTAL_RAM, MAX_USED_RAM, AVERAGE_LOAD, delta_t))
+    f.write("# total ram: %.2f GB, max ram used: %.2f GB, average load: %.2f %%, duration: %.2f minutes\n" % (TOTAL_RAM, MAX_USED_RAM, AVERAGE_LOAD, delta_t))
 
-g("set title 'cpu load (avarage = %.2f %%)'" % AVERAGE_LOAD)
+g("set title 'cpu load (average = %.2f %%)'" % AVERAGE_LOAD)
 g("set title tc rgb 'white' font 'Courier-New,8'")
 
 seconds_between = (edt - sdt).total_seconds()
