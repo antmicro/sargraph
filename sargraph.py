@@ -16,8 +16,9 @@ import time
 from datetime import datetime, timedelta
 from select import select
 from fcntl import fcntl, F_GETFL, F_SETFL
+from os.path import realpath
 from socket import gethostname
-from re import search
+from re import search, escape
 
 global gnuplot
 global die
@@ -28,8 +29,10 @@ GNUPLOT_VERSION_EXPECTED = 5.0
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('session', metavar='SESSION-NAME', type=str, nargs='?', default=None, help='sargraph session name')
-parser.add_argument('command', metavar='COMMAND',      type=str, nargs='*',               help='send command')
+parser.add_argument('session', metavar='SESSION-NAME', type=str, nargs='?', default=None,                help='sargraph session name')
+parser.add_argument('command', metavar='COMMAND',      type=str, nargs='*',                              help='send command')
+parser.add_argument('-f',      metavar='DEVICE-NAME',  type=str, nargs='?', default=None, dest='fsdev',  help='observe a chosen filesystem')
+parser.add_argument('-m',      metavar='MOUNT-DIR',    type=str, nargs='?', default=None, dest='fspath', help='observe a chosen filesystem')
 args = parser.parse_args()
 
 
@@ -152,7 +155,7 @@ if args.session:
 
     if cmd[0] == "start":
         print("Starting sargraph session '%s'" % sid)
-        p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__file__)])
+        p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__file__), *sys.argv[3:]])
         while p.poll() is None:
             time.sleep(0.1)
         gpid = 0
@@ -257,11 +260,24 @@ g("set terminal %s size 1200,800 background '#222222' font 'Courier-New,8'" % OU
 signal.signal(signal.SIGTERM, kill_handler)
 i = 0
 
+if not args.fspath and not args.fsdev:
+    args.fspath = "/"
+if args.fspath:
+    args.fspath = realpath(args.fspath)
+    with open("/proc/mounts", "r") as f:
+        while args.fsdev is None:
+            args.fsdev = scan("^(/dev/\S+)\s+%s\s+" % escape(args.fspath), str, f.readline())
+    if not args.fsdev:
+        print("Error: no device is mounted on %s" % args.fspath)
+        sys.exit(1)
+
 START_DATE = ""
 END_DATE = ""
 AVERAGE_LOAD = 0.0
 MAX_USED_RAM = 0
 MAX_USED_FS = 0
+
+FS_SAR_INDEX = None
 
 flags = fcntl(sys.stdin, F_GETFL)
 fcntl(sys.stdin, F_SETFL, flags | os.O_NONBLOCK)
@@ -302,14 +318,15 @@ while 1:
 
     # Read and process FS data
     fs_data = read_table(p.stdout)
-    END_DATE = now + " " + fs_data['time'][0]
-    fs_data['time'][0] = now + "-" + fs_data['time'][0]
-    if MAX_USED_FS < int(fs_data['MBfsused'][0]):
-        MAX_USED_FS = int(fs_data['MBfsused'][0])
-
+    if FS_SAR_INDEX is None:
+      FS_SAR_INDEX = fs_data['FILESYSTEM'].index(args.fsdev)
+    END_DATE = now + " " + fs_data['time'][FS_SAR_INDEX]
+    fs_data['time'][FS_SAR_INDEX] = now + "-" + fs_data['time'][FS_SAR_INDEX]
+    if MAX_USED_FS < int(fs_data['MBfsused'][FS_SAR_INDEX]):
+        MAX_USED_FS = int(fs_data['MBfsused'][FS_SAR_INDEX])
 
     with open("data.txt", "a") as f:
-        f.write("%s %s %s %s\n" % (cpu_data["time"][0], cpu_data["%user"][0], ram_data["%memused"][0], fs_data["%fsused"][0]))
+        f.write("%s %s %s %s\n" % (cpu_data["time"][0], cpu_data["%user"][0], ram_data["%memused"][0], fs_data["%fsused"][FS_SAR_INDEX]))
 
     if die:
         break
@@ -373,8 +390,8 @@ g("set ylabel 'ram % usage'")
 g("set title 'ram usage (max = %.2f GB)'" % MAX_USED_RAM);
 g("plot 'data.txt' using 1:3:3 title 'ram' with boxes palette")
 
-g("set ylabel '%s %% usage'" % fs_data['FILESYSTEM'][0])
-g("set title '%s usage (max = %.2f MB)'" % (fs_data['FILESYSTEM'][0], MAX_USED_FS));
+g("set ylabel '%s %% usage'" % fs_data['FILESYSTEM'][FS_SAR_INDEX])
+g("set title '%s usage (max = %.2f MB)'" % (fs_data['FILESYSTEM'][FS_SAR_INDEX], MAX_USED_FS));
 g("plot 'data.txt' using 1:4:4 title 'fs' with boxes palette")
 
 g("unset multiplot")
