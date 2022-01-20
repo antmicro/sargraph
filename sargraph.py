@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #
-# (c) 2019-2020 Antmicro <www.antmicro.com>
+# (c) 2019-2022 Antmicro <www.antmicro.com>
 # License: Apache
 #
 
