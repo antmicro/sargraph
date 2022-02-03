@@ -1,6 +1,6 @@
 # sargraph
 
-Copyright (c) 2019-2021 [Antmicro](https://www.antmicro.com)
+Copyright (c) 2019-2022 [Antmicro](https://www.antmicro.com)
 
 This is a simple python tool that uses "sysstat" ("sar") and "gnuplot" to plot cpu and ram usage.
 
