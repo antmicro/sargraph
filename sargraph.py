@@ -257,9 +257,6 @@ g("set rmargin 6")
 
 g("set terminal %s size 1200,800 background '#222222' font 'Courier-New,8'" % OUTPUT_TYPE)
 
-signal.signal(signal.SIGTERM, kill_handler)
-i = 0
-
 if not args.fspath and not args.fsdev:
     args.fspath = "/"
 if args.fspath:
@@ -270,6 +267,9 @@ if args.fspath:
     if not args.fsdev:
         print("Error: no device is mounted on %s" % args.fspath)
         sys.exit(1)
+
+signal.signal(signal.SIGTERM, kill_handler)
+i = 0
 
 START_DATE = ""
 END_DATE = ""
