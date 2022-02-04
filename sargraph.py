@@ -279,6 +279,7 @@ END_DATE = ""
 AVERAGE_LOAD = 0.0
 MAX_USED_RAM = 0
 MAX_USED_FS = 0
+TOTAL_FS = 0
 
 FS_SAR_INDEX = None
 
@@ -330,6 +331,8 @@ while 1:
                 if maxv < v:
                     maxj, maxv = j, v
             FS_SAR_INDEX = maxj
+    if TOTAL_FS == 0:
+        TOTAL_FS = (stof(fs_data['MBfsused'][FS_SAR_INDEX]) + stof(fs_data['MBfsfree'][FS_SAR_INDEX])) / 1024.0
     if MAX_USED_FS < int(fs_data['MBfsused'][FS_SAR_INDEX]):
         MAX_USED_FS = int(fs_data['MBfsused'][FS_SAR_INDEX])
 
@@ -360,7 +363,7 @@ edt = datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
 delta_t = ((edt - sdt).total_seconds()) / 60.0
 
 with open("data.txt", "a") as f:
-    f.write("# total ram: %.2f GB, max ram used: %.2f GB, average load: %.2f %%, duration: %.2f minutes\n" % (TOTAL_RAM, MAX_USED_RAM, AVERAGE_LOAD, delta_t))
+    f.write("# total ram: %.2f GB, total disk space: %.2f GB, max ram used: %.2f GB, average load: %.2f %%, duration: %.2f minutes\n" % (TOTAL_RAM, TOTAL_FS, MAX_USED_RAM, AVERAGE_LOAD, delta_t))
 
 g("set title 'cpu load (average = %.2f %%)'" % AVERAGE_LOAD)
 g("set title tc rgb 'white' font 'Courier-New,8'")
@@ -374,7 +377,7 @@ nedt = edt + timedelta(seconds = (seconds_between * 0.01))
 
 g("set xrange ['%s':'%s']" % (nsdt.strftime("%Y-%m-%d-%H:%M:%S"), nedt.strftime("%Y-%m-%d-%H:%M:%S")));
 
-g("set label 101 at screen 0.02, screen 0.95 'Running on {/:Bold %s} \@ {/:Bold %s}, {/:Bold %d} threads x {/:Bold %s}, total ram is {/:Bold %.2f GB}' tc rgb 'white'" % (gethostname(), uname, cpus, cpu_name, TOTAL_RAM))
+g("set label 101 at screen 0.02, screen 0.95 'Running on {/:Bold %s} \@ {/:Bold %s}, {/:Bold %d} threads x {/:Bold %s}, total ram: {/:Bold %.2f GB}, total disk space: {/:Bold %.2f GB}' tc rgb 'white'" % (gethostname(), uname, cpus, cpu_name, TOTAL_RAM, TOTAL_FS))
 g("set label 102 at screen 0.02, screen 0.93 'duration: {/:Bold %s} .. {/:Bold %s} (%.2f minutes)' tc rgb 'white'" % (START_DATE, END_DATE, delta_t))
 
 i = 0
