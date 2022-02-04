@@ -96,6 +96,11 @@ def read_table(f):
     return table
 
 
+# Convert a string to float, also when the separator is a comma
+def stof(s):
+    return float(s.replace(',', '.'))
+
+
 # Run a command in a running gnuplot process
 def g(command):
     global gnuplot
@@ -257,11 +262,9 @@ g("set rmargin 6")
 
 g("set terminal %s size 1200,800 background '#222222' font 'Courier-New,8'" % OUTPUT_TYPE)
 
-if not args.fspath and not args.fsdev:
-    args.fspath = "/"
 if args.fspath:
     args.fspath = realpath(args.fspath)
-    with open("/proc/mounts", "r") as f:
+    with open("/proc/self/mounts", "r") as f:
         while args.fsdev is None:
             args.fsdev = scan("^(/dev/\S+)\s+%s\s+" % escape(args.fspath), str, f.readline())
     if not args.fsdev:
@@ -305,7 +308,7 @@ while 1:
     cpu_data = read_table(p.stdout)
     if START_DATE == "":
         START_DATE = date + " " + daytime
-    AVERAGE_LOAD += float(cpu_data["%user"][0])
+    AVERAGE_LOAD += stof(cpu_data["%user"][0])
     i = i + 1
 
     # Read and process RAM data
@@ -318,7 +321,15 @@ while 1:
     # Read and process FS data
     fs_data = read_table(p.stdout)
     if FS_SAR_INDEX is None:
-      FS_SAR_INDEX = fs_data['FILESYSTEM'].index(args.fsdev)
+        if args.fsdev:
+            FS_SAR_INDEX = fs_data['FILESYSTEM'].index(args.fsdev)
+        else:
+            maxj, maxv = 0, 0
+            for j, free in enumerate(fs_data['MBfsfree']):
+                v = stof(fs_data['MBfsfree'][j]) + stof(fs_data['MBfsused'][j])
+                if maxv < v:
+                    maxj, maxv = j, v
+            FS_SAR_INDEX = maxj
     if MAX_USED_FS < int(fs_data['MBfsused'][FS_SAR_INDEX]):
         MAX_USED_FS = int(fs_data['MBfsused'][FS_SAR_INDEX])
 
