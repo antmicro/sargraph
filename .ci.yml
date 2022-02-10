@@ -1,0 +1,34 @@
+image: debian:bullseye
+
+before_script:
+  - apt -qqy update > /dev/null
+  - apt -qqy install --no-install-recommends screen sysstat gnuplot-nox python3 stress coreutils > /dev/null
+  - ln -s $(realpath sargraph.py) /usr/bin/sargraph
+
+simple_test:
+  variables:
+    FAKE_DISK: "fake_disk.ext4"
+    FAKE_MOUNTPOINT: "fake_mountpoint"
+    SARGRAPH_OUTPUT_TYPE: "svg"
+  script:
+    - dd if=/dev/zero of=$FAKE_DISK bs=1M count=130
+    - mkfs.ext4 $FAKE_DISK
+    - mkdir -p $FAKE_MOUNTPOINT && mount $FAKE_DISK $FAKE_MOUNTPOINT
+
+    - sargraph chart start -m $FAKE_MOUNTPOINT
+
+    - cd $FAKE_MOUNTPOINT
+    - df -h .
+    - stress -c 16 -i 1 -m 1 --vm-bytes 512M -d 1 --hdd-bytes 90M -t 160s
+
+    - sargraph chart stop
+
+    - cd ..
+    - cat screenlog.0
+    - test -f plot.svg
+  artifacts:
+    when: always
+    paths:
+      - "*.svg"
+      - "*.txt"
+      - "screenlog.*"
