@@ -19,7 +19,7 @@ simple_test:
 
     - cd $FAKE_MOUNTPOINT
     - df -h .
-    - stress -c 16 -i 1 -m 1 --vm-bytes 512M -d 1 --hdd-bytes 90M -t 160s
+    - stress -c 16 -i 1 -m 1 --vm-bytes 512M -d 1 --hdd-bytes 70M -t 160s
 
     - sargraph chart stop
 
