@@ -101,26 +101,6 @@ def stof(s):
     return float(s.replace(',', '.'))
 
 
-# Run a command in a running gnuplot process
-def g(command):
-    global gnuplot
-
-    if not (gnuplot.poll() is None):
-        print("Error: gnuplot not running!")
-        return
-    print ("gnuplot> %s" % command)
-    try:
-        command = b"%s\n" % command
-    except:
-        command = b"%s\n" % str.encode(command)
-    gnuplot.stdin.write(b"%s\n" % command)
-    gnuplot.stdin.flush()
-
-    if command == b"quit\n":
-        while gnuplot.poll() is None:
-            time.sleep(0.25)
-
-
 # Check if the avaliable gnuplot has a required version
 p = run_process("gnuplot", "--version", stdout=subprocess.PIPE)
 version = scan(r"gnuplot (\S+)", float, p.stdout.readline().decode())
@@ -234,33 +214,9 @@ with open("/proc/cpuinfo") as f:
             break
 
 with open("data.txt", "w") as f:
-    f.write("# pid: %d, machine: %s, cpu count: %d\n" % (os.getpid(), uname, cpus))
+    f.write("# pid: %d, machine: %s, cpu count: %d, cpu: %s\n" % (os.getpid(), uname, cpus, cpu_name))
 
 p.stdout.readline()
-
-g("set ylabel 'cpu % load (user)'")
-
-g("set ylabel tc rgb 'white' font 'Courier-New,8'")
-
-g("set datafile commentschars '#'")
-
-g("set timefmt '%s'")
-g("set xdata time")
-g("set border lc rgb 'white'")
-g("set key tc rgb 'white'")
-g("set timefmt '%Y-%m-%d-%H:%M:%S'")
-g("set xtics format '%H:%M:%S'")
-g("set xtics font 'Courier-New,8' tc rgb 'white'")
-g("set ytics font 'Courier-New,8' tc rgb 'white'")
-g("set grid xtics ytics ls 12 lc rgb '#444444'")
-g("set style fill solid")
-g("set palette defined ( 0.2 '#00ff00', 0.8 '#ff0000' )")
-g("set cbrange [0:100]")
-g("unset colorbox")
-g("unset key")
-g("set rmargin 6")
-
-g("set terminal %s size 1200,800 background '#222222' font 'Courier-New,8'" % OUTPUT_TYPE)
 
 if args.fspath:
     args.fspath = realpath(args.fspath)
@@ -346,68 +302,18 @@ while 1:
         break
 
 if i == 0:
-    g("quit")
     time.sleep(1)
     sys.exit(0)
 
-g("set output 'plot.%s'" % OUTPUT_EXT)
-
-g("set multiplot layout 3,1 title \"%s\"" % "\\n\\n\\n")
-
+FS_NAME = fs_data["FILESYSTEM"][FS_SAR_INDEX]
 
 AVERAGE_LOAD = AVERAGE_LOAD / float(i)
 MAX_USED_RAM = MAX_USED_RAM / 1024.0 / 1024.0
+MAX_USED_FS /= 1024.0
 
 sdt = datetime.strptime(START_DATE, '%Y-%m-%d %H:%M:%S')
 edt = datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
 delta_t = ((edt - sdt).total_seconds()) / 60.0
 
 with open("data.txt", "a") as f:
-    f.write("# total ram: %.2f GB, total disk space: %.2f GB, max ram used: %.2f GB, average load: %.2f %%, duration: %.2f minutes\n" % (TOTAL_RAM, TOTAL_FS, MAX_USED_RAM, AVERAGE_LOAD, delta_t))
-
-g("set title 'cpu load (average = %.2f %%)'" % AVERAGE_LOAD)
-g("set title tc rgb 'white' font 'Courier-New,8'")
-
-seconds_between = (edt - sdt).total_seconds()
-if seconds_between < 100:
- seconds_between = 100
-
-nsdt = sdt - timedelta(seconds = (seconds_between * 0.01))
-nedt = edt + timedelta(seconds = (seconds_between * 0.01))
-
-g("set xrange ['%s':'%s']" % (nsdt.strftime("%Y-%m-%d-%H:%M:%S"), nedt.strftime("%Y-%m-%d-%H:%M:%S")));
-
-g("set label 101 at screen 0.02, screen 0.95 'Running on {/:Bold %s} \@ {/:Bold %s}, {/:Bold %d} threads x {/:Bold %s}, total ram: {/:Bold %.2f GB}, total disk space: {/:Bold %.2f GB}' tc rgb 'white'" % (gethostname(), uname, cpus, cpu_name, TOTAL_RAM, TOTAL_FS))
-g("set label 102 at screen 0.02, screen 0.93 'duration: {/:Bold %s} .. {/:Bold %s} (%.2f minutes)' tc rgb 'white'" % (START_DATE, END_DATE, delta_t))
-
-i = 0
-for label in labels:
-    i = i + 1
-    g("set arrow nohead from '%s', graph 0.01 to '%s', graph 0.87 front lc rgb 'red' dt 2" % (label[0],label[0]))
-    g("set object rect at '%s', graph 0.90 size char %d, char 1.5 fc rgb 'red'" % (label[0],len("%d" % i)+1))
-    g("set object rect at '%s', graph 0.0 size char 0.5, char 0.5 front fc rgb 'red'" % label[0])
-    g("set label at '%s', graph 0.90 '%d' center tc rgb 'black' font 'Courier-New,7'" % (label[0],i))
-    g("set label at '%s', graph 0.95 '%s' center tc rgb 'white' font 'Courier-New,7'" % (label[0], label[1][0:20]))
-
-if i > 0:
-    g("set yrange [0:119]")
-else:
-    g("set yrange [0:100]")
-
-g("set object rectangle from graph 0, graph 0 to graph 2, graph 2 behind fillcolor rgb '#111111' fillstyle solid noborder")
-g("set object rectangle from '%s', 0 to '%s', 100 behind fillcolor rgb '#000000' fillstyle solid noborder" % (START_DATE.replace(" ", "-"), END_DATE.replace(" ", "-")))
-
-
-g("plot 'data.txt' using 1:2:2 title 'cpu' with boxes palette")
-
-g("set ylabel 'ram % usage'")
-g("set title 'ram usage (max = %.2f GB)'" % MAX_USED_RAM);
-g("plot 'data.txt' using 1:3:3 title 'ram' with boxes palette")
-
-g("set ylabel '%s %% usage'" % fs_data['FILESYSTEM'][FS_SAR_INDEX])
-g("set title '%s usage (max = %.2f MB)'" % (fs_data['FILESYSTEM'][FS_SAR_INDEX], MAX_USED_FS));
-g("plot 'data.txt' using 1:4:4 title 'fs' with boxes palette")
-
-g("unset multiplot")
-g("unset output")
-g("quit")
+    f.write("# total ram: %.2f GB, total disk space: %.2f GB, max ram used: %.2f GB, max disk used: %.2f GB, average load: %.2f %%, observed disk: %s, duration: %.2f minutes\n" % (TOTAL_RAM, TOTAL_FS, MAX_USED_RAM, MAX_USED_FS, AVERAGE_LOAD, FS_NAME, delta_t))
