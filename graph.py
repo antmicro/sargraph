@@ -6,61 +6,19 @@
 #
 
 
-import argparse
 import os
-import signal
 import subprocess
 import sys
 import time
 
 from datetime import datetime, timedelta
-from select import select
-from fcntl import fcntl, F_GETFL, F_SETFL
-from os.path import realpath
 from socket import gethostname
-from re import search, escape
+
+from common import *
 
 global gnuplot
-global die
-
-die = 0
 
 GNUPLOT_VERSION_EXPECTED = 5.0
-
-
-parser = argparse.ArgumentParser()
-parser.add_argument('session', metavar='SESSION-NAME', type=str, nargs='?', default=None,                help='sargraph session name')
-parser.add_argument('command', metavar='COMMAND',      type=str, nargs='*',                              help='send command')
-parser.add_argument('-f',      metavar='DEVICE-NAME',  type=str, nargs='?', default=None, dest='fsdev',  help='observe a chosen filesystem')
-parser.add_argument('-m',      metavar='MOUNT-DIR',    type=str, nargs='?', default=None, dest='fspath', help='observe a chosen filesystem')
-args = parser.parse_args()
-
-
-# Run process, return subprocess object on success, exit script on fail
-def run_process(*argv, **kwargs):
-    try:
-        p = subprocess.Popen(argv, **kwargs)
-    except:
-        print("Error: '%s' tool not found" % argv[0])
-        sys.exit(1)
-    return p
-
-
-# Convert a string to float, also when the separator is a comma
-def stof(s):
-    return float(s.replace(',', '.'))
-
-
-# Get the first group from a given match and convert to required type
-def scan(regex, conv, string):
-    match = search(regex, string)
-    if not match:
-        return None
-    try:
-        value = conv(match.group(1))
-    except ValueError:
-        return None
-    return value
 
 
 # Run a command in a running gnuplot process
@@ -81,6 +39,13 @@ def g(command):
     if command == b"quit\n":
         while gnuplot.poll() is None:
             time.sleep(0.25)
+
+# Check if the avaliable gnuplot has a required version
+p = run_process("gnuplot", "--version", stdout=subprocess.PIPE)
+version = scan(r"gnuplot (\S+)", float, p.stdout.readline().decode())
+if version < GNUPLOT_VERSION_EXPECTED:
+    print("Error: Gnuplot version too low. Need at least %g found %g" % (GNUPLOT_VERSION_EXPECTED, version[0]))
+    sys.exit(1)
 
 
 START_DATE = ""

@@ -13,19 +13,18 @@ import subprocess
 import sys
 import time
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from select import select
 from fcntl import fcntl, F_GETFL, F_SETFL
 from os.path import realpath
-from socket import gethostname
-from re import search, escape
+from re import escape
+
+from common import *
 
 global gnuplot
 global die
 
 die = 0
-
-GNUPLOT_VERSION_EXPECTED = 5.0
 
 
 parser = argparse.ArgumentParser()
@@ -45,28 +44,6 @@ def kill_handler(a, b):
 # Check if a process is running
 def pid_running(pid):
     return os.path.exists("/proc/%d" % pid)
-
-
-# Run process, return subprocess object on success, exit script on fail
-def run_process(*argv, **kwargs):
-    try:
-        p = subprocess.Popen(argv, **kwargs)
-    except:
-        print("Error: '%s' tool not found" % argv[0])
-        sys.exit(1)
-    return p
-
-
-# Get the first group from a given match and convert to required type
-def scan(regex, conv, string):
-    match = search(regex, string)
-    if not match:
-        return None
-    try:
-        value = conv(match.group(1))
-    except ValueError:
-        return None
-    return value
 
 
 # Read a single table from sar output
@@ -94,19 +71,6 @@ def read_table(f):
             table[header[i]].append(value)
 
     return table
-
-
-# Convert a string to float, also when the separator is a comma
-def stof(s):
-    return float(s.replace(',', '.'))
-
-
-# Check if the avaliable gnuplot has a required version
-p = run_process("gnuplot", "--version", stdout=subprocess.PIPE)
-version = scan(r"gnuplot (\S+)", float, p.stdout.readline().decode())
-if version < GNUPLOT_VERSION_EXPECTED:
-    print("Error: Gnuplot version too low. Need at least %g found %g" % (GNUPLOT_VERSION_EXPECTED, version[0]))
-    sys.exit(1)
 
 
 OUTPUT_TYPE="pngcairo"
@@ -140,7 +104,7 @@ if args.session:
 
     if cmd[0] == "start":
         print("Starting sargraph session '%s'" % sid)
-        p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__file__), *sys.argv[3:]])
+        p = subprocess.Popen(["screen", "-dmSL", sid, realpath(__file__), *sys.argv[3:]])
         while p.poll() is None:
             time.sleep(0.1)
         gpid = 0
@@ -180,10 +144,6 @@ if args.session:
         print("Error: Unknown command '%s'" % cmd[0])
         sys.exit(1)
     sys.exit(0)
-
-# If the script runs in a screen session, initialize the plot and gather data
-
-gnuplot = run_process("gnuplot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
 my_env = os.environ
 my_env["S_TIME_FORMAT"] = "ISO"
