@@ -7,26 +7,24 @@
 
 
 import argparse
+import datetime
+import fcntl
 import os
+import re
+import select
 import signal
 import subprocess
 import sys
 import time
 
-from datetime import datetime
-from select import select
-from fcntl import fcntl, F_GETFL, F_SETFL
-from os.path import realpath
-from re import escape
-
 from common import *
 
-global gnuplot
 global die
 
 die = 0
 
 
+# Declare and parse command line flags
 parser = argparse.ArgumentParser()
 parser.add_argument('session', metavar='SESSION-NAME', type=str, nargs='?', default=None,                help='sargraph session name')
 parser.add_argument('command', metavar='COMMAND',      type=str, nargs='*',                              help='send command')
@@ -104,7 +102,7 @@ if args.session:
 
     if cmd[0] == "start":
         print("Starting sargraph session '%s'" % sid)
-        p = subprocess.Popen(["screen", "-dmSL", sid, realpath(__file__), *sys.argv[3:]])
+        p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__file__), *sys.argv[3:]])
         while p.poll() is None:
             time.sleep(0.1)
         gpid = 0
@@ -179,10 +177,10 @@ with open("data.txt", "w") as f:
 p.stdout.readline()
 
 if args.fspath:
-    args.fspath = realpath(args.fspath)
+    args.fspath = os.path.realpath(args.fspath)
     with open("/proc/self/mounts", "r") as f:
         while args.fsdev is None:
-            args.fsdev = scan("^(/dev/\S+)\s+%s\s+" % escape(args.fspath), str, f.readline())
+            args.fsdev = scan("^(/dev/\S+)\s+%s\s+" % re.escape(args.fspath), str, f.readline())
     if not args.fsdev:
         print("Error: no device is mounted on %s" % args.fspath)
         sys.exit(1)
@@ -199,14 +197,14 @@ TOTAL_FS = 0
 
 FS_SAR_INDEX = None
 
-flags = fcntl(sys.stdin, F_GETFL)
-fcntl(sys.stdin, F_SETFL, flags | os.O_NONBLOCK)
+flags = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
+fcntl.fcntl(sys.stdin, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 labels = []
 
 # Gather data from sar output
 while 1:
-    rlist, _, _ = select([p.stdout, sys.stdin], [], [], 0.25)
-    now = datetime.now()
+    rlist, _, _ = select.select([p.stdout, sys.stdin], [], [], 0.25)
+    now = datetime.datetime.now()
     if sys.stdin in rlist:
         label_line = sys.stdin.readline().replace("\n", "")
         if label_line == "q":
@@ -271,8 +269,8 @@ AVERAGE_LOAD = AVERAGE_LOAD / float(i)
 MAX_USED_RAM = MAX_USED_RAM / 1024.0 / 1024.0
 MAX_USED_FS /= 1024.0
 
-sdt = datetime.strptime(START_DATE, '%Y-%m-%d %H:%M:%S')
-edt = datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
+sdt = datetime.datetime.strptime(START_DATE, '%Y-%m-%d %H:%M:%S')
+edt = datetime.datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
 delta_t = ((edt - sdt).total_seconds()) / 60.0
 
 with open("data.txt", "a") as f:

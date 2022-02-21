@@ -6,13 +6,12 @@
 #
 
 
+import datetime
 import os
+import socket
 import subprocess
 import sys
 import time
-
-from datetime import datetime, timedelta
-from socket import gethostname
 
 from common import *
 
@@ -160,8 +159,8 @@ g("set output 'plot.%s'" % OUTPUT_EXT)
 
 g("set multiplot layout 3,1 title \"%s\"" % "\\n\\n\\n")
 
-sdt = datetime.strptime(START_DATE, '%Y-%m-%d-%H:%M:%S')
-edt = datetime.strptime(END_DATE, '%Y-%m-%d-%H:%M:%S')
+sdt = datetime.datetime.strptime(START_DATE, '%Y-%m-%d-%H:%M:%S')
+edt = datetime.datetime.strptime(END_DATE, '%Y-%m-%d-%H:%M:%S')
 delta_t = ((edt - sdt).total_seconds()) / 60.0
 
 g("set title 'cpu load (average = %.2f %%)'" % AVERAGE_LOAD)
@@ -171,12 +170,12 @@ seconds_between = (edt - sdt).total_seconds()
 if seconds_between < 100:
  seconds_between = 100
 
-nsdt = sdt - timedelta(seconds = (seconds_between * 0.01))
-nedt = edt + timedelta(seconds = (seconds_between * 0.01))
+nsdt = sdt - datetime.timedelta(seconds = (seconds_between * 0.01))
+nedt = edt + datetime.timedelta(seconds = (seconds_between * 0.01))
 
 g("set xrange ['%s':'%s']" % (nsdt.strftime("%Y-%m-%d-%H:%M:%S"), nedt.strftime("%Y-%m-%d-%H:%M:%S")));
 
-g("set label 101 at screen 0.02, screen 0.95 'Running on {/:Bold %s} \@ {/:Bold %s}, {/:Bold %d} threads x {/:Bold %s}, total ram: {/:Bold %.2f GB}, total disk space: {/:Bold %.2f GB}' tc rgb 'white'" % (gethostname(), uname, cpus, cpu_name, TOTAL_RAM, TOTAL_FS))
+g("set label 101 at screen 0.02, screen 0.95 'Running on {/:Bold %s} \@ {/:Bold %s}, {/:Bold %d} threads x {/:Bold %s}, total ram: {/:Bold %.2f GB}, total disk space: {/:Bold %.2f GB}' tc rgb 'white'" % (socket.gethostname(), uname, cpus, cpu_name, TOTAL_RAM, TOTAL_FS))
 g("set label 102 at screen 0.02, screen 0.93 'duration: {/:Bold %s} .. {/:Bold %s} (%.2f minutes)' tc rgb 'white'" % (START_DATE, END_DATE, delta_t))
 
 i = 0
