@@ -43,7 +43,7 @@ def g(command):
 p = run_process("gnuplot", "--version", stdout=subprocess.PIPE)
 version = scan(r"gnuplot (\S+)", float, p.stdout.readline().decode())
 if version < GNUPLOT_VERSION_EXPECTED:
-    print("Error: Gnuplot version too low. Need at least %g found %g" % (GNUPLOT_VERSION_EXPECTED, version[0]))
+    print(f"Error: Gnuplot version too low. Need at least {GNUPLOT_VERSION_EXPECTED} found {version[0]}")
     sys.exit(1)
 
 

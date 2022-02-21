@@ -17,7 +17,7 @@ def run_process(*argv, **kwargs):
     try:
         p = subprocess.Popen(argv, **kwargs)
     except:
-        print("Error: '%s' tool not found" % argv[0])
+        print(f"Error: '{argv[0]}' tool not found")
         sys.exit(1)
     return p
 
