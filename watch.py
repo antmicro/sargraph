@@ -17,6 +17,9 @@ import subprocess
 import sys
 import time
 
+# Get access to main module information
+import __main__
+
 from common import *
 
 global die
@@ -35,8 +38,8 @@ args = parser.parse_args()
 
 # Handle SIGTERM
 def kill_handler(a, b):
-        global die
-        die = 1
+    global die
+    die = 1
 
 
 # Check if a process is running
@@ -102,7 +105,7 @@ if args.session:
 
     if cmd[0] == "start":
         print(f"Starting sargraph session '{sid}'")
-        p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__file__), *sys.argv[3:]])
+        p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__main__.__file__), *sys.argv[3:]])
         while p.poll() is None:
             time.sleep(0.1)
         gpid = 0
@@ -286,7 +289,7 @@ with open("data.txt", "a") as f:
           f"total disk space: {TOTAL_FS:.2f} GB",
           f"max ram used: {MAX_USED_RAM:.2f} GB",
           f"max disk used: {MAX_USED_FS:.2f} GB",
-          f"average load: {AVERAGE_LOAD:.2f} %%",
+          f"average load: {AVERAGE_LOAD:.2f} %",
           f"observed disk: {FS_NAME}",
           f"duration: {delta_t:.2f} minutes",
           sep=", ", file=f)

@@ -19,7 +19,6 @@ global gnuplot
 
 GNUPLOT_VERSION_EXPECTED = 5.0
 
-
 # Run a command in a running gnuplot process
 def g(command):
     global gnuplot
@@ -62,60 +61,61 @@ cpu_name="unknown"
 
 
 labels = []
-for line in sys.stdin:
-    value = None
+with open("data.txt", "r") as f:
+    for line in f:
+        value = None
 
-    if len(line) <= 0:
-        continue
+        if len(line) <= 0:
+            continue
 
-    if line[0] != '#':
-        if not START_DATE:
-            START_DATE = scan("^(\S+)", str, line)
-        END_DATE = scan("^(\S+)", str, line)
+        if line[0] != '#':
+            if not START_DATE:
+                START_DATE = scan("^(\S+)", str, line)
+            END_DATE = scan("^(\S+)", str, line)
 
-    value = scan("label: (.+)", str, line)
-    if value is not None:
-        key = scan("(\S+) label:", str, line)
-        labels.append([key, value])
+        value = scan("label: (.+)", str, line)
+        if value is not None:
+            key = scan("(\S+) label:", str, line)
+            labels.append([key, value])
 
-        # Comments are not mixed with anything else, so skip
-        continue
+            # Comments are not mixed with anything else, so skip
+            continue
 
-    value = scan("machine: ([^,]+)", str, line)
-    if value is not None:
-        uname = value
+        value = scan("machine: ([^,]+)", str, line)
+        if value is not None:
+            uname = value
 
-    value = scan("cpu count: ([^,]+)", int, line)
-    if value is not None:
-        cpus = value
+        value = scan("cpu count: ([^,]+)", int, line)
+        if value is not None:
+            cpus = value
 
-    value = scan("cpu: ([^,\n]+)", str, line)
-    if value is not None:
-        cpu_name = value
+        value = scan("cpu: ([^,\n]+)", str, line)
+        if value is not None:
+            cpu_name = value
 
-    value = scan("observed disk: ([^,]+)", str, line)
-    if value is not None:
-        NAME_FS = value
+        value = scan("observed disk: ([^,]+)", str, line)
+        if value is not None:
+            NAME_FS = value
 
-    value = scan("total ram: (\S+)", stof, line)
-    if value is not None:
-        TOTAL_RAM = value
+        value = scan("total ram: (\S+)", stof, line)
+        if value is not None:
+            TOTAL_RAM = value
 
-    value = scan("max ram used: (\S+)", stof, line)
-    if value is not None:
-        MAX_USED_RAM = value
+        value = scan("max ram used: (\S+)", stof, line)
+        if value is not None:
+            MAX_USED_RAM = value
 
-    value = scan("total disk space: (\S+)", stof, line)
-    if value is not None:
-        TOTAL_FS = value
+        value = scan("total disk space: (\S+)", stof, line)
+        if value is not None:
+            TOTAL_FS = value
 
-    value = scan("max disk used: (\S+)", stof, line)
-    if value is not None:
-        MAX_USED_FS = value
+        value = scan("max disk used: (\S+)", stof, line)
+        if value is not None:
+            MAX_USED_FS = value
 
-    value = scan("average load: (\S+)", stof, line)
-    if value is not None:
-        AVERAGE_LOAD = value
+        value = scan("average load: (\S+)", stof, line)
+        if value is not None:
+            AVERAGE_LOAD = value
 
 
 # Initialize the plot
