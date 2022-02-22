@@ -135,6 +135,18 @@ except:
 
 gnuplot = run_process("gnuplot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
+sdt = datetime.datetime.strptime(START_DATE, '%Y-%m-%d-%H:%M:%S')
+edt = datetime.datetime.strptime(END_DATE, '%Y-%m-%d-%H:%M:%S')
+
+seconds_between = (edt - sdt).total_seconds()
+if seconds_between < 100:
+ seconds_between = 100
+
+nsdt = sdt - datetime.timedelta(seconds = (seconds_between * 0.01))
+nedt = edt + datetime.timedelta(seconds = (seconds_between * 0.01))
+
+host = socket.gethostname()
+
 g("set ylabel 'cpu % load (user)'")
 
 g("set ylabel tc rgb 'white' font 'Courier-New,8'")
@@ -159,25 +171,12 @@ g("set rmargin 6")
 
 g(f"set terminal {OUTPUT_TYPE} size 1200,800 background '#222222' font 'Courier-New,8'")
 
-
 g(f"set output 'plot.{OUTPUT_EXT}'")
 
 g("set multiplot layout 3,1 title \"\\n\\n\\n\"")
 
-sdt = datetime.datetime.strptime(START_DATE, '%Y-%m-%d-%H:%M:%S')
-edt = datetime.datetime.strptime(END_DATE, '%Y-%m-%d-%H:%M:%S')
-
 g(f"set title 'cpu load (average = {AVERAGE_LOAD:.2f} %%)'")
 g("set title tc rgb 'white' font 'Courier-New,8'")
-
-seconds_between = (edt - sdt).total_seconds()
-if seconds_between < 100:
- seconds_between = 100
-
-nsdt = sdt - datetime.timedelta(seconds = (seconds_between * 0.01))
-nedt = edt + datetime.timedelta(seconds = (seconds_between * 0.01))
-
-host = socket.gethostname()
 
 g(f"set xrange ['{nsdt.strftime('%Y-%m-%d-%H:%M:%S')}':'{nedt.strftime('%Y-%m-%d-%H:%M:%S')}']");
 
