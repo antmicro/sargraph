@@ -19,6 +19,39 @@ global gnuplot
 
 GNUPLOT_VERSION_EXPECTED = 5.0
 
+START_DATE = ""
+END_DATE = ""
+AVERAGE_LOAD = 0.0
+MAX_USED_RAM = 0
+MAX_USED_FS = 0
+TOTAL_RAM = 0
+TOTAL_FS = 0
+NAME_FS = "unknown"
+
+UNAME="unknown"
+CPUS=0
+CPU_NAME="unknown"
+DURATION = 0.0
+
+HOST = socket.gethostname()
+
+# The number of plots on the graph
+NUMBER_OF_PLOTS = 3
+
+# The default format
+OUTPUT_TYPE="pngcairo"
+OUTPUT_EXT="png"
+
+labels = []
+
+
+# Check if the avaliable gnuplot has a required version
+p = run_process("gnuplot", "--version", stdout=subprocess.PIPE)
+version = scan(r"gnuplot (\S+)", float, p.stdout.readline().decode())
+if version < GNUPLOT_VERSION_EXPECTED:
+    print(f"Error: Gnuplot version too low. Need at least {GNUPLOT_VERSION_EXPECTED} found {version[0]}")
+    sys.exit(1)
+
 
 # Run a command in a running gnuplot process
 def g(command):
@@ -41,100 +74,88 @@ def g(command):
 
 
 # Plot a single column of values from data.txt
-def plot(ylabel, title, column):
+def plot(ylabel, title, name, column):
     g(f"set ylabel '{ylabel}'")
     g(f"set title '{title}'")
-    g(f"plot 'data.txt' using 1:{column}:{column} title 'cpu' with boxes palette")
+    g(f"plot '{name}.txt' using 1:{column}:{column} title 'cpu' with boxes palette")
 
 
-# Check if the avaliable gnuplot has a required version
-p = run_process("gnuplot", "--version", stdout=subprocess.PIPE)
-version = scan(r"gnuplot (\S+)", float, p.stdout.readline().decode())
-if version < GNUPLOT_VERSION_EXPECTED:
-    print(f"Error: Gnuplot version too low. Need at least {GNUPLOT_VERSION_EXPECTED} found {version[0]}")
-    sys.exit(1)
+# Read additional information from 'data.txt' comments
+def read_comments(name):
+    global START_DATE
+    global END_DATE
+    global AVERAGE_LOAD
+    global MAX_USED_RAM
+    global MAX_USED_FS
+    global TOTAL_RAM
+    global TOTAL_FS
+    global NAME_FS
+    global UNAME
+    global CPUS
+    global CPU_NAME
+    global DURATION
+
+    with open(f"{name}.txt", "r") as f:
+        for line in f:
+            value = None
+
+            if len(line) <= 0:
+                continue
+
+            if line[0] != '#':
+                if not START_DATE:
+                    START_DATE = scan("^(\S+)", str, line)
+                END_DATE = scan("^(\S+)", str, line)
+
+            value = scan("label: (.+)", str, line)
+            if value is not None:
+                key = scan("(\S+) label:", str, line)
+                labels.append([key, value])
+
+                # Comments are not mixed with anything else, so skip
+                continue
+
+            value = scan("machine: ([^,]+)", str, line)
+            if value is not None:
+                UNAME = value
+
+            value = scan("cpu count: ([^,]+)", int, line)
+            if value is not None:
+                CPUS = value
+
+            value = scan("cpu: ([^,\n]+)", str, line)
+            if value is not None:
+                CPU_NAME = value
+
+            value = scan("observed disk: ([^,]+)", str, line)
+            if value is not None:
+                NAME_FS = value
+
+            value = scan("total ram: (\S+)", stof, line)
+            if value is not None:
+                TOTAL_RAM = value
+
+            value = scan("max ram used: (\S+)", stof, line)
+            if value is not None:
+                MAX_USED_RAM = value
+
+            value = scan("total disk space: (\S+)", stof, line)
+            if value is not None:
+                TOTAL_FS = value
+
+            value = scan("duration: (\S+)", stof, line)
+            if value is not None:
+                DURATION = value
+
+            value = scan("max disk used: (\S+)", stof, line)
+            if value is not None:
+                MAX_USED_FS = value
+
+            value = scan("average load: (\S+)", stof, line)
+            if value is not None:
+                AVERAGE_LOAD = value
 
 
-START_DATE = ""
-END_DATE = ""
-AVERAGE_LOAD = 0.0
-MAX_USED_RAM = 0
-MAX_USED_FS = 0
-TOTAL_RAM = 0
-TOTAL_FS = 0
-NAME_FS = "unknown"
-
-uname="unknown"
-cpus=0
-cpu_name="unknown"
-duration = 0.0
-
-
-labels = []
-with open("data.txt", "r") as f:
-    for line in f:
-        value = None
-
-        if len(line) <= 0:
-            continue
-
-        if line[0] != '#':
-            if not START_DATE:
-                START_DATE = scan("^(\S+)", str, line)
-            END_DATE = scan("^(\S+)", str, line)
-
-        value = scan("label: (.+)", str, line)
-        if value is not None:
-            key = scan("(\S+) label:", str, line)
-            labels.append([key, value])
-
-            # Comments are not mixed with anything else, so skip
-            continue
-
-        value = scan("machine: ([^,]+)", str, line)
-        if value is not None:
-            uname = value
-
-        value = scan("cpu count: ([^,]+)", int, line)
-        if value is not None:
-            cpus = value
-
-        value = scan("cpu: ([^,\n]+)", str, line)
-        if value is not None:
-            cpu_name = value
-
-        value = scan("observed disk: ([^,]+)", str, line)
-        if value is not None:
-            NAME_FS = value
-
-        value = scan("total ram: (\S+)", stof, line)
-        if value is not None:
-            TOTAL_RAM = value
-
-        value = scan("max ram used: (\S+)", stof, line)
-        if value is not None:
-            MAX_USED_RAM = value
-
-        value = scan("total disk space: (\S+)", stof, line)
-        if value is not None:
-            TOTAL_FS = value
-
-        value = scan("duration: (\S+)", stof, line)
-        if value is not None:
-            duration = value
-
-        value = scan("max disk used: (\S+)", stof, line)
-        if value is not None:
-            MAX_USED_FS = value
-
-        value = scan("average load: (\S+)", stof, line)
-        if value is not None:
-            AVERAGE_LOAD = value
-
-
-# Initialize the plot
-OUTPUT_TYPE="pngcairo"
-OUTPUT_EXT="png"
 try:
     if os.environ["SARGRAPH_OUTPUT_TYPE"] == "svg":
         OUTPUT_TYPE="svg"
@@ -142,77 +163,78 @@ try:
 except:
     pass
 
-# The number of plots on the graph
-NUMBER_OF_PLOTS = 3
 
-gnuplot = run_process("gnuplot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+def graph(name):
+    global gnuplot
 
-sdt = datetime.datetime.strptime(START_DATE, '%Y-%m-%d-%H:%M:%S')
-edt = datetime.datetime.strptime(END_DATE, '%Y-%m-%d-%H:%M:%S')
+    read_comments(name)
 
-seconds_between = (edt - sdt).total_seconds()
-if seconds_between < 100:
- seconds_between = 100
+    gnuplot = run_process("gnuplot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
-nsdt = sdt - datetime.timedelta(seconds = (seconds_between * 0.01))
-nedt = edt + datetime.timedelta(seconds = (seconds_between * 0.01))
+    sdt = datetime.datetime.strptime(START_DATE, '%Y-%m-%d-%H:%M:%S')
+    edt = datetime.datetime.strptime(END_DATE, '%Y-%m-%d-%H:%M:%S')
 
-host = socket.gethostname()
+    seconds_between = (edt - sdt).total_seconds()
+    if seconds_between < 100:
+     seconds_between = 100
 
-g("set ylabel tc rgb 'white' font 'Courier-New,8'")
+    nsdt = sdt - datetime.timedelta(seconds = (seconds_between * 0.01))
+    nedt = edt + datetime.timedelta(seconds = (seconds_between * 0.01))
 
-g("set datafile commentschars '#'")
+    g("set ylabel tc rgb 'white' font 'Courier-New,8'")
 
-g("set timefmt '%s'")
-g("set xdata time")
-g("set border lc rgb 'white'")
-g("set key tc rgb 'white'")
-g("set timefmt '%Y-%m-%d-%H:%M:%S'")
-g("set xtics format '%H:%M:%S'")
-g("set xtics font 'Courier-New,8' tc rgb 'white'")
-g("set ytics font 'Courier-New,8' tc rgb 'white'")
-g("set grid xtics ytics ls 12 lc rgb '#444444'")
-g("set style fill solid")
-g("set palette defined ( 0.2 '#00ff00', 0.8 '#ff0000' )")
-g("set cbrange [0:100]")
-g("unset colorbox")
-g("unset key")
-g("set rmargin 6")
+    g("set datafile commentschars '#'")
 
-g(f"set terminal {OUTPUT_TYPE} size 1200,800 background '#222222' font 'Courier-New,8'")
+    g("set timefmt '%s'")
+    g("set xdata time")
+    g("set border lc rgb 'white'")
+    g("set key tc rgb 'white'")
+    g("set timefmt '%Y-%m-%d-%H:%M:%S'")
+    g("set xtics format '%H:%M:%S'")
+    g("set xtics font 'Courier-New,8' tc rgb 'white'")
+    g("set ytics font 'Courier-New,8' tc rgb 'white'")
+    g("set grid xtics ytics ls 12 lc rgb '#444444'")
+    g("set style fill solid")
+    g("set palette defined ( 0.2 '#00ff00', 0.8 '#ff0000' )")
+    g("set cbrange [0:100]")
+    g("unset colorbox")
+    g("unset key")
+    g("set rmargin 6")
 
-g(f"set output 'plot.{OUTPUT_EXT}'")
+    g(f"set terminal {OUTPUT_TYPE} size 1200,800 background '#222222' font 'Courier-New,8'")
 
-g(f"set multiplot layout {NUMBER_OF_PLOTS},1 title \"\\n\\n\\n\"")
+    g(f"set output '{name}.{OUTPUT_EXT}'")
 
-g("set title tc rgb 'white' font 'Courier-New,8'")
+    g(f"set multiplot layout {NUMBER_OF_PLOTS},1 title \"\\n\\n\\n\"")
 
-g(f"set xrange ['{nsdt.strftime('%Y-%m-%d-%H:%M:%S')}':'{nedt.strftime('%Y-%m-%d-%H:%M:%S')}']");
+    g("set title tc rgb 'white' font 'Courier-New,8'")
 
-g(f"set label 101 at screen 0.02, screen 0.95 'Running on {{/:Bold {host}}} \@ {{/:Bold {uname}}}, {{/:Bold {cpus}}} threads x {{/:Bold {cpu_name}}}, total ram: {{/:Bold {TOTAL_RAM:.2f} GB}}, total disk space: {{/:Bold {TOTAL_FS:.2f} GB}}' tc rgb 'white'")
-g(f"set label 102 at screen 0.02, screen 0.93 'duration: {{/:Bold {START_DATE}}} .. {{/:Bold {END_DATE}}} ({duration:.2f} minutes)' tc rgb 'white'")
+    g(f"set xrange ['{nsdt.strftime('%Y-%m-%d-%H:%M:%S')}':'{nedt.strftime('%Y-%m-%d-%H:%M:%S')}']");
 
-i = 0
-for label in labels:
-    i = i + 1
-    g(f"set arrow nohead from '{label[0]}', graph 0.01 to '{label[0]}', graph 0.87 front lc rgb 'red' dt 2")
-    g(f"set object rect at '{label[0]}', graph 0.90 size char {len('%d' % i)+1}, char 1.5 fc rgb 'red'")
-    g(f"set object rect at '{label[0]}', graph 0.0 size char 0.5, char 0.5 front fc rgb 'red'")
-    g(f"set label at '{label[0]}', graph 0.90 '{i}' center tc rgb 'black' font 'Courier-New,7'")
-    g(f"set label at '{label[0]}', graph 0.95 '{label[1][0:20]}' center tc rgb 'white' font 'Courier-New,7'")
+    g(f"set label 101 at screen 0.02, screen 0.95 'Running on {{/:Bold {HOST}}} \@ {{/:Bold {UNAME}}}, {{/:Bold {CPUS}}} threads x {{/:Bold {CPU_NAME}}}, total ram: {{/:Bold {TOTAL_RAM:.2f} GB}}, total disk space: {{/:Bold {TOTAL_FS:.2f} GB}}' tc rgb 'white'")
+    g(f"set label 102 at screen 0.02, screen 0.93 'Duration: {{/:Bold {START_DATE}}} .. {{/:Bold {END_DATE}}} ({DURATION:.2f} minutes)' tc rgb 'white'")
 
-if i > 0:
-    g("set yrange [0:119]")
-else:
-    g("set yrange [0:100]")
+    i = 0
+    for label in labels:
+        i = i + 1
+        g(f"set arrow nohead from '{label[0]}', graph 0.01 to '{label[0]}', graph 0.87 front lc rgb 'red' dt 2")
+        g(f"set object rect at '{label[0]}', graph 0.90 size char {len('%d' % i)+1}, char 1.5 fc rgb 'red'")
+        g(f"set object rect at '{label[0]}', graph 0.0 size char 0.5, char 0.5 front fc rgb 'red'")
+        g(f"set label at '{label[0]}', graph 0.90 '{i}' center tc rgb 'black' font 'Courier-New,7'")
+        g(f"set label at '{label[0]}', graph 0.95 '{label[1][0:20]}' center tc rgb 'white' font 'Courier-New,7'")
 
-g("set object rectangle from graph 0, graph 0 to graph 2, graph 2 behind fillcolor rgb '#111111' fillstyle solid noborder")
-g(f"set object rectangle from '{START_DATE.replace(' ', '-')}', 0 to '{END_DATE.replace(' ', '-')}', 100 behind fillcolor rgb '#000000' fillstyle solid noborder")
+    if i > 0:
+        g("set yrange [0:119]")
+    else:
+        g("set yrange [0:100]")
 
-plot("cpu % load (user)", f"cpu load (average = {AVERAGE_LOAD:.2f} %)", 2)
-plot("ram % usage", f"ram usage (max = {MAX_USED_RAM:.2f} GB)", 3)
-plot(f"{NAME_FS}'", f"{NAME_FS} usage (max = {MAX_USED_FS:.2f} MB)", 4)
+    g("set object rectangle from graph 0, graph 0 to graph 2, graph 2 behind fillcolor rgb '#111111' fillstyle solid noborder")
+    g(f"set object rectangle from '{START_DATE.replace(' ', '-')}', 0 to '{END_DATE.replace(' ', '-')}', 100 behind fillcolor rgb '#000000' fillstyle solid noborder")
 
-g("unset multiplot")
-g("unset output")
-g("quit")
+    plot("cpu % load (user)", f"cpu load (average = {AVERAGE_LOAD:.2f} %)", name, 2)
+    plot("ram % usage", f"ram usage (max = {MAX_USED_RAM:.2f} GB)", name, 3)
+    plot(f"{NAME_FS}'", f"{NAME_FS} usage (max = {MAX_USED_FS:.2f} MB)", name, 4)
+
+    g("unset multiplot")
+    g("unset output")
+    g("quit")

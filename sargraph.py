@@ -7,16 +7,18 @@
 
 import argparse
 import sys
+import time
+
 
 from common import *
 
 # Declare and parse command line flags
 parser = argparse.ArgumentParser()
-parser.add_argument('session', metavar='SESSION-NAME', type=str, nargs='?', default=None,                 help='sargraph session name')
-parser.add_argument('command', metavar='COMMAND',      type=str, nargs='*',                               help='send command')
-parser.add_argument('-f',      metavar='DEVICE-NAME',  type=str, nargs='?', default=None,  dest='fsdev',  help='observe a chosen filesystem')
-parser.add_argument('-m',      metavar='MOUNT-DIR',    type=str, nargs='?', default=None,  dest='fspath', help='observe a chosen filesystem')
-parser.add_argument('-t',      metavar='GRAPH-TYPE',   type=str, nargs='?', default='png', dest='type',   help='output graph type or \'none\'')
+parser.add_argument('session', metavar='SESSION-NAME', type=str, nargs='?', default=None,                  help='sargraph session name')
+parser.add_argument('command', metavar='COMMAND',      type=str, nargs='*',                                help='send command')
+parser.add_argument('-f',      metavar='DEVICE-NAME',  type=str, nargs='?', default=None,   dest='fsdev',  help='observe a chosen filesystem')
+parser.add_argument('-m',      metavar='MOUNT-DIR',    type=str, nargs='?', default=None,   dest='fspath', help='observe a chosen filesystem')
+parser.add_argument('-o',      metavar='OUTPUT-NAME',  type=str, nargs='?', default='data', dest='name',   help='set output base names')
 args = parser.parse_args()
 
 # Check if sar is available
@@ -32,6 +34,18 @@ if version is None:
 # If the script was run with no parameters, run in background and gather data
 if args.session is None:
     import watch
+
+    # Find requested disk device
+    if args.fspath:
+        args.fspath = os.path.realpath(args.fspath)
+        with open("/proc/self/mounts", "r") as f:
+            while args.fsdev is None:
+                args.fsdev = scan(f"^(/dev/\S+)\s+{re.escape(args.fspath)}\s+", str, f.readline())
+        if not args.fsdev:
+            print(f"Error: no device is mounted on {args.fspath}")
+            sys.exit(1)
+
+    watch.watch(args.name, args.fsdev)
     sys.exit(0)
 
 # Now handle the commands
@@ -49,7 +63,7 @@ if cmd[0] == "start":
     print(f"Starting sargraph session '{sid}'")
 
     # Spawn watcher process, *sys.argv[3:] is all arguments after 'chart start'
-    p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__main__.__file__), *sys.argv[3:]])
+    p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__file__), *sys.argv[3:], '-o', sid])
 
     while p.poll() is None:
         time.sleep(0.1)
@@ -75,6 +89,9 @@ elif cmd[0] == "stop":
         #print("Waiting for pid %d" % gpid)
         while pid_running(gpid):
             time.sleep(0.25)
+
+    import graph
+    graph.graph(sid)
 elif cmd[0] == "label":
     # Check if the label name was provided
     if len(cmd) < 2:
@@ -87,8 +104,8 @@ elif cmd[0] == "label":
     while p.poll() is None:
         time.sleep(0.1)
 elif cmd[0] == 'plot':
-    # Plot the result
-    import graph
+    # TODO: plot the result
+    pass
 else:
     print(f"Error: Unknown command '{cmd[0]}'")
     sys.exit(1)
