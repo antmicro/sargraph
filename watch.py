@@ -122,6 +122,7 @@ fcntl.fcntl(sys.stdin, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
 # Gather data from sar output
 while 1:
+    # Await sar output or a command sent from command handler in sargraph.py
     rlist, _, _ = select.select([p.stdout, sys.stdin], [], [], 0.25)
     now = datetime.datetime.now()
     if sys.stdin in rlist:
