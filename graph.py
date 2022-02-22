@@ -19,6 +19,7 @@ global gnuplot
 
 GNUPLOT_VERSION_EXPECTED = 5.0
 
+
 # Run a command in a running gnuplot process
 def g(command):
     global gnuplot
@@ -37,6 +38,14 @@ def g(command):
     if command == b"quit\n":
         while gnuplot.poll() is None:
             time.sleep(0.25)
+
+
+# Plot a single column of values from data.txt
+def plot(ylabel, title, column):
+    g(f"set ylabel '{ylabel}'")
+    g(f"set title '{title}'")
+    g(f"plot 'data.txt' using 1:{column}:{column} title 'cpu' with boxes palette")
+
 
 # Check if the avaliable gnuplot has a required version
 p = run_process("gnuplot", "--version", stdout=subprocess.PIPE)
@@ -133,6 +142,9 @@ try:
 except:
     pass
 
+# The number of plots on the graph
+NUMBER_OF_PLOTS = 3
+
 gnuplot = run_process("gnuplot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
 sdt = datetime.datetime.strptime(START_DATE, '%Y-%m-%d-%H:%M:%S')
@@ -146,8 +158,6 @@ nsdt = sdt - datetime.timedelta(seconds = (seconds_between * 0.01))
 nedt = edt + datetime.timedelta(seconds = (seconds_between * 0.01))
 
 host = socket.gethostname()
-
-g("set ylabel 'cpu % load (user)'")
 
 g("set ylabel tc rgb 'white' font 'Courier-New,8'")
 
@@ -173,15 +183,14 @@ g(f"set terminal {OUTPUT_TYPE} size 1200,800 background '#222222' font 'Courier-
 
 g(f"set output 'plot.{OUTPUT_EXT}'")
 
-g("set multiplot layout 3,1 title \"\\n\\n\\n\"")
+g(f"set multiplot layout {NUMBER_OF_PLOTS},1 title \"\\n\\n\\n\"")
 
-g(f"set title 'cpu load (average = {AVERAGE_LOAD:.2f} %%)'")
 g("set title tc rgb 'white' font 'Courier-New,8'")
 
 g(f"set xrange ['{nsdt.strftime('%Y-%m-%d-%H:%M:%S')}':'{nedt.strftime('%Y-%m-%d-%H:%M:%S')}']");
 
-g("set label 101 at screen 0.02, screen 0.95 'Running on {/:Bold %s} \@ {/:Bold %s}, {/:Bold %d} threads x {/:Bold %s}, total ram: {/:Bold %.2f GB}, total disk space: {/:Bold %.2f GB}' tc rgb 'white'" % (host, uname, cpus, cpu_name, TOTAL_RAM, TOTAL_FS))
-g("set label 102 at screen 0.02, screen 0.93 'duration: {/:Bold %s} .. {/:Bold %s} (%.2f minutes)' tc rgb 'white'" % (START_DATE, END_DATE, duration))
+g(f"set label 101 at screen 0.02, screen 0.95 'Running on {{/:Bold {host}}} \@ {{/:Bold {uname}}}, {{/:Bold {cpus}}} threads x {{/:Bold {cpu_name}}}, total ram: {{/:Bold {TOTAL_RAM:.2f} GB}}, total disk space: {{/:Bold {TOTAL_FS:.2f} GB}}' tc rgb 'white'")
+g(f"set label 102 at screen 0.02, screen 0.93 'duration: {{/:Bold {START_DATE}}} .. {{/:Bold {END_DATE}}} ({duration:.2f} minutes)' tc rgb 'white'")
 
 i = 0
 for label in labels:
@@ -200,16 +209,9 @@ else:
 g("set object rectangle from graph 0, graph 0 to graph 2, graph 2 behind fillcolor rgb '#111111' fillstyle solid noborder")
 g(f"set object rectangle from '{START_DATE.replace(' ', '-')}', 0 to '{END_DATE.replace(' ', '-')}', 100 behind fillcolor rgb '#000000' fillstyle solid noborder")
 
-
-g("plot 'data.txt' using 1:2:2 title 'cpu' with boxes palette")
-
-g("set ylabel 'ram % usage'")
-g(f"set title 'ram usage (max = {MAX_USED_RAM:.2f} GB)'");
-g("plot 'data.txt' using 1:3:3 title 'ram' with boxes palette")
-
-g("set ylabel '%s %% usage'" % NAME_FS)
-g(f"set title '{NAME_FS} usage (max = {MAX_USED_FS:.2f} MB)'");
-g("plot 'data.txt' using 1:4:4 title 'fs' with boxes palette")
+plot("cpu % load (user)", f"cpu load (average = {AVERAGE_LOAD:.2f} %)", 2)
+plot("ram % usage", f"ram usage (max = {MAX_USED_RAM:.2f} GB)", 3)
+plot(f"{NAME_FS}'", f"{NAME_FS} usage (max = {MAX_USED_FS:.2f} MB)", 4)
 
 g("unset multiplot")
 g("unset output")
