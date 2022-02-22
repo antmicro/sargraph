@@ -58,6 +58,7 @@ NAME_FS = "unknown"
 uname="unknown"
 cpus=0
 cpu_name="unknown"
+duration = 0.0
 
 
 labels = []
@@ -109,6 +110,10 @@ with open("data.txt", "r") as f:
         if value is not None:
             TOTAL_FS = value
 
+        value = scan("duration: (\S+)", stof, line)
+        if value is not None:
+            duration = value
+
         value = scan("max disk used: (\S+)", stof, line)
         if value is not None:
             MAX_USED_FS = value
@@ -152,18 +157,17 @@ g("unset colorbox")
 g("unset key")
 g("set rmargin 6")
 
-g("set terminal %s size 1200,800 background '#222222' font 'Courier-New,8'" % OUTPUT_TYPE)
+g(f"set terminal {OUTPUT_TYPE} size 1200,800 background '#222222' font 'Courier-New,8'")
 
 
-g("set output 'plot.%s'" % OUTPUT_EXT)
+g(f"set output 'plot.{OUTPUT_EXT}'")
 
-g("set multiplot layout 3,1 title \"%s\"" % "\\n\\n\\n")
+g("set multiplot layout 3,1 title \"\\n\\n\\n\"")
 
 sdt = datetime.datetime.strptime(START_DATE, '%Y-%m-%d-%H:%M:%S')
 edt = datetime.datetime.strptime(END_DATE, '%Y-%m-%d-%H:%M:%S')
-delta_t = ((edt - sdt).total_seconds()) / 60.0
 
-g("set title 'cpu load (average = %.2f %%)'" % AVERAGE_LOAD)
+g(f"set title 'cpu load (average = {AVERAGE_LOAD:.2f} %%)'")
 g("set title tc rgb 'white' font 'Courier-New,8'")
 
 seconds_between = (edt - sdt).total_seconds()
@@ -173,19 +177,21 @@ if seconds_between < 100:
 nsdt = sdt - datetime.timedelta(seconds = (seconds_between * 0.01))
 nedt = edt + datetime.timedelta(seconds = (seconds_between * 0.01))
 
-g("set xrange ['%s':'%s']" % (nsdt.strftime("%Y-%m-%d-%H:%M:%S"), nedt.strftime("%Y-%m-%d-%H:%M:%S")));
+host = socket.gethostname()
 
-g("set label 101 at screen 0.02, screen 0.95 'Running on {/:Bold %s} \@ {/:Bold %s}, {/:Bold %d} threads x {/:Bold %s}, total ram: {/:Bold %.2f GB}, total disk space: {/:Bold %.2f GB}' tc rgb 'white'" % (socket.gethostname(), uname, cpus, cpu_name, TOTAL_RAM, TOTAL_FS))
-g("set label 102 at screen 0.02, screen 0.93 'duration: {/:Bold %s} .. {/:Bold %s} (%.2f minutes)' tc rgb 'white'" % (START_DATE, END_DATE, delta_t))
+g(f"set xrange ['{nsdt.strftime('%Y-%m-%d-%H:%M:%S')}':'{nedt.strftime('%Y-%m-%d-%H:%M:%S')}']");
+
+g("set label 101 at screen 0.02, screen 0.95 'Running on {/:Bold %s} \@ {/:Bold %s}, {/:Bold %d} threads x {/:Bold %s}, total ram: {/:Bold %.2f GB}, total disk space: {/:Bold %.2f GB}' tc rgb 'white'" % (host, uname, cpus, cpu_name, TOTAL_RAM, TOTAL_FS))
+g("set label 102 at screen 0.02, screen 0.93 'duration: {/:Bold %s} .. {/:Bold %s} (%.2f minutes)' tc rgb 'white'" % (START_DATE, END_DATE, duration))
 
 i = 0
 for label in labels:
     i = i + 1
-    g("set arrow nohead from '%s', graph 0.01 to '%s', graph 0.87 front lc rgb 'red' dt 2" % (label[0],label[0]))
-    g("set object rect at '%s', graph 0.90 size char %d, char 1.5 fc rgb 'red'" % (label[0],len("%d" % i)+1))
-    g("set object rect at '%s', graph 0.0 size char 0.5, char 0.5 front fc rgb 'red'" % label[0])
-    g("set label at '%s', graph 0.90 '%d' center tc rgb 'black' font 'Courier-New,7'" % (label[0],i))
-    g("set label at '%s', graph 0.95 '%s' center tc rgb 'white' font 'Courier-New,7'" % (label[0], label[1][0:20]))
+    g(f"set arrow nohead from '{label[0]}', graph 0.01 to '{label[0]}', graph 0.87 front lc rgb 'red' dt 2")
+    g(f"set object rect at '{label[0]}', graph 0.90 size char {len('%d' % i)+1}, char 1.5 fc rgb 'red'")
+    g(f"set object rect at '{label[0]}', graph 0.0 size char 0.5, char 0.5 front fc rgb 'red'")
+    g(f"set label at '{label[0]}', graph 0.90 '{i}' center tc rgb 'black' font 'Courier-New,7'")
+    g(f"set label at '{label[0]}', graph 0.95 '{label[1][0:20]}' center tc rgb 'white' font 'Courier-New,7'")
 
 if i > 0:
     g("set yrange [0:119]")
@@ -193,17 +199,17 @@ else:
     g("set yrange [0:100]")
 
 g("set object rectangle from graph 0, graph 0 to graph 2, graph 2 behind fillcolor rgb '#111111' fillstyle solid noborder")
-g("set object rectangle from '%s', 0 to '%s', 100 behind fillcolor rgb '#000000' fillstyle solid noborder" % (START_DATE.replace(" ", "-"), END_DATE.replace(" ", "-")))
+g(f"set object rectangle from '{START_DATE.replace(' ', '-')}', 0 to '{END_DATE.replace(' ', '-')}', 100 behind fillcolor rgb '#000000' fillstyle solid noborder")
 
 
 g("plot 'data.txt' using 1:2:2 title 'cpu' with boxes palette")
 
 g("set ylabel 'ram % usage'")
-g("set title 'ram usage (max = %.2f GB)'" % MAX_USED_RAM);
+g(f"set title 'ram usage (max = {MAX_USED_RAM:.2f} GB)'");
 g("plot 'data.txt' using 1:3:3 title 'ram' with boxes palette")
 
 g("set ylabel '%s %% usage'" % NAME_FS)
-g("set title '%s usage (max = %.2f MB)'" % (NAME_FS, MAX_USED_FS));
+g(f"set title '{NAME_FS} usage (max = {MAX_USED_FS:.2f} MB)'");
 g("plot 'data.txt' using 1:4:4 title 'fs' with boxes palette")
 
 g("unset multiplot")
