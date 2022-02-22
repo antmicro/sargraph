@@ -96,6 +96,8 @@ if args.session:
 
     if cmd[0] == "start":
         print(f"Starting sargraph session '{sid}'")
+
+        # *sys.argv[3:] is all arguments after 'chart start'
         p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__main__.__file__), *sys.argv[3:]])
         while p.poll() is None:
             time.sleep(0.1)
