@@ -74,15 +74,6 @@ def read_table(f):
     return table
 
 
-OUTPUT_TYPE="pngcairo"
-OUTPUT_EXT="png"
-try:
-    if os.environ["SARGRAPH_OUTPUT_TYPE"] == "svg":
-        OUTPUT_TYPE="svg"
-        OUTPUT_EXT="svg"
-except:
-    pass
-
 p = run_process("sar", "-V", stdout=subprocess.PIPE)
 
 # If the script was run with parameters, handle them
