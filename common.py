@@ -22,6 +22,11 @@ def run_process(*argv, **kwargs):
     return p
 
 
+# Check if a process is running
+def pid_running(pid):
+    return os.path.exists(f"/proc/{pid}")
+
+
 # Convert a string to float, also when the separator is a comma
 def stof(s):
     return float(s.replace(',', '.'))

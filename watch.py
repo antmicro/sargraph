@@ -42,11 +42,6 @@ def kill_handler(a, b):
     die = 1
 
 
-# Check if a process is running
-def pid_running(pid):
-    return os.path.exists(f"/proc/{pid}")
-
-
 # Read a single table from sar output
 def read_table(f):
     # Find the header
