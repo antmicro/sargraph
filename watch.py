@@ -26,6 +26,17 @@ global die
 die = 0
 
 
+# Initialize summary variables
+TOTAL_RAM = 0
+START_DATE = ""
+END_DATE = ""
+AVERAGE_LOAD = 0.0
+MAX_USED_RAM = 0
+MAX_USED_FS = 0
+TOTAL_FS = 0
+FS_SAR_INDEX = None
+
+
 # Handle SIGTERM
 def kill_handler(a, b):
     global die
@@ -61,8 +72,6 @@ def read_table(f):
 
 my_env = os.environ
 my_env["S_TIME_FORMAT"] = "ISO"
-
-TOTAL_RAM = 0
 
 with open("/proc/meminfo") as f:
     TOTAL_RAM = int(scan("MemTotal:\s+(\d+)", float, f.read())/1024/1024)
@@ -107,15 +116,6 @@ if args.fspath:
 
 signal.signal(signal.SIGTERM, kill_handler)
 i = 0
-
-START_DATE = ""
-END_DATE = ""
-AVERAGE_LOAD = 0.0
-MAX_USED_RAM = 0
-MAX_USED_FS = 0
-TOTAL_FS = 0
-
-FS_SAR_INDEX = None
 
 flags = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
 fcntl.fcntl(sys.stdin, fcntl.F_SETFL, flags | os.O_NONBLOCK)
