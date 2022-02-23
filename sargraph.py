@@ -21,6 +21,11 @@ parser.add_argument('-m',      metavar='MOUNT-DIR',    type=str, nargs='?', defa
 parser.add_argument('-o',      metavar='OUTPUT-NAME',  type=str, nargs='?', default='data', dest='name',   help='set output base names')
 args = parser.parse_args()
 
+def send(sid, msg):
+    p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", f"{msg}\n"])
+    while p.poll() is None:
+        time.sleep(0.1)
+
 # Check if sar is available
 p = run_process("sar", "-V", stdout=subprocess.PIPE)
 
@@ -80,16 +85,13 @@ elif cmd[0] == "stop":
         print("Warning: cannot find pid.")
         gpid = -1
     if len(cmd) < 2:
-        p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "command:q:\n"])
+        send(sid, "command:q:")
     else:
-        p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", f"command:q:{cmd[1]}\n"])
-    while p.poll() is None:
-        time.sleep(0.1)
+        send(sid, f"command:q:{cmd[1]}")
     if gpid == -1:
         print("Waiting 3 seconds.")
         time.sleep(3)
     else:
-        #print("Waiting for pid %d" % gpid)
         while pid_running(gpid):
             time.sleep(0.25)
 elif cmd[0] == "label":
@@ -97,21 +99,14 @@ elif cmd[0] == "label":
     if len(cmd) < 2:
         print("Error: label command requires an additional parameter")
         sys.exit(1)
-    label = cmd[1]
-
-    print(f"Adding label '{label}' to sargraph session '{sid}'.")
-    p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", f"label:{label}\n"])
-    while p.poll() is None:
-        time.sleep(0.1)
+    print(f"Adding label '{cmd[1]}' to sargraph session '{sid}'.")
+    send(sid, f"label:{cmd[1]}")
 elif cmd[0] == 'save':
     print(f"Saving graph from session '{sid}'.")
     if len(cmd) < 2:
-        fname = ''
+        send(sid, "command:s:")
     else:
-        fname = cmd[1]
-    p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", f"command:s:{fname}\n"])
-    while p.poll() is None:
-        time.sleep(0.1)
+        send(sid, f"command:s:{cmd[1]}")
 elif cmd[0] == 'plot':
     import graph
     if len(cmd) < 2:
