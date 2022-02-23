@@ -79,10 +79,10 @@ elif cmd[0] == "stop":
     except:
         print("Warning: cannot find pid.")
         gpid = -1
-    if len(cmd) >= 2 and cmd[1] == "none":
-        p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "command:b\n"])
+    if len(cmd) < 2:
+        p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "command:q:\n"])
     else:
-        p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "command:q\n"])
+        p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", f"command:q:{cmd[1]}\n"])
     while p.poll() is None:
         time.sleep(0.1)
     if gpid == -1:

@@ -156,7 +156,18 @@ def watch(session, fsdev):
             label_line = sys.stdin.readline().replace("\n", "")
             if label_line.startswith("command:"):
                 label_line = label_line[len("command:"):]
-                if label_line == "q":
+                if label_line.startswith("q:"):
+                    label_line = label_line[len("q:"):]
+
+                    summarize(session)
+                    if label_line == "none":
+                        pass
+                    elif label_line:
+                        import graph
+                        graph.graph(session, label_line)
+                    elif not dont_plot:
+                        import graph
+                        graph.graph(session)
                     die = 1
                     break
                 elif label_line.startswith("s:"):
@@ -171,10 +182,6 @@ def watch(session, fsdev):
                         graph.graph(session)
                     else:
                         graph.graph(session, label_line)
-                elif label_line == "b":
-                    dont_plot = True
-                    die = 1
-                    break
             elif label_line.startswith('label:'):
                 label_line = label_line[len('label:'):]
                 with open(f"{session}.txt", "a") as f:
@@ -235,9 +242,3 @@ def watch(session, fsdev):
     if SAMPLE_NUMBER == 0:
         time.sleep(1)
         sys.exit(0)
-
-    summarize(session)
-
-    if not dont_plot:
-        import graph
-        graph.graph(session)
