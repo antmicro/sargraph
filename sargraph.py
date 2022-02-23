@@ -79,7 +79,10 @@ elif cmd[0] == "stop":
     except:
         print("Warning: cannot find pid.")
         gpid = -1
-    p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "q\n"])
+    if len(cmd) >= 2 and cmd[1] == "none":
+        p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "command:b\n"])
+    else:
+        p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", "command:q\n"])
     while p.poll() is None:
         time.sleep(0.1)
     if gpid == -1:
@@ -89,9 +92,6 @@ elif cmd[0] == "stop":
         #print("Waiting for pid %d" % gpid)
         while pid_running(gpid):
             time.sleep(0.25)
-
-    import graph
-    graph.graph(sid)
 elif cmd[0] == "label":
     # Check if the label name was provided
     if len(cmd) < 2:
@@ -100,12 +100,24 @@ elif cmd[0] == "label":
     label = cmd[1]
 
     print(f"Adding label '{label}' to sargraph session '{sid}'.")
-    p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", f"{label}\n"])
+    p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", f"label:{label}\n"])
+    while p.poll() is None:
+        time.sleep(0.1)
+elif cmd[0] == 'save':
+    print(f"Saving graph from session '{sid}'.")
+    if len(cmd) < 2:
+        fname = ''
+    else:
+        fname = cmd[1]
+    p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", f"command:s:{fname}\n"])
     while p.poll() is None:
         time.sleep(0.1)
 elif cmd[0] == 'plot':
-    # TODO: plot the result
-    pass
+    import graph
+    if len(cmd) < 2:
+        graph.graph(sid)
+    else:
+        graph.graph(sid, cmd[1])
 else:
     print(f"Error: Unknown command '{cmd[0]}'")
     sys.exit(1)

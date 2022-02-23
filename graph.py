@@ -74,14 +74,14 @@ def g(command):
 
 
 # Plot a single column of values from data.txt
-def plot(ylabel, title, name, column):
+def plot(ylabel, title, session, column):
     g(f"set ylabel '{ylabel}'")
     g(f"set title '{title}'")
-    g(f"plot '{name}.txt' using 1:{column}:{column} title 'cpu' with boxes palette")
+    g(f"plot '{session}.txt' using 1:{column}:{column} title 'cpu' with boxes palette")
 
 
 # Read additional information from 'data.txt' comments
-def read_comments(name):
+def read_comments(session):
     global START_DATE
     global END_DATE
     global AVERAGE_LOAD
@@ -95,7 +95,7 @@ def read_comments(name):
     global CPU_NAME
     global DURATION
 
-    with open(f"{name}.txt", "r") as f:
+    with open(f"{session}.txt", "r") as f:
         for line in f:
             value = None
 
@@ -156,18 +156,34 @@ def read_comments(name):
                 AVERAGE_LOAD = value
 
 
-try:
-    if os.environ["SARGRAPH_OUTPUT_TYPE"] == "svg":
-        OUTPUT_TYPE="svg"
-        OUTPUT_EXT="svg"
-except:
-    pass
+def graph(session, fname='plot.png'):
+    global OUTPUT_TYPE
+    global OUTPUT_EXT
 
+    global labels
 
-def graph(name):
     global gnuplot
 
-    read_comments(name)
+    labels = []
+
+    if "SARGRAPH_OUTPUT_TYPE" in os.environ:
+        if os.environ["SARGRAPH_OUTPUT_TYPE"] == "svg":
+            OUTPUT_TYPE="svg"
+            OUTPUT_EXT="svg"
+    elif fname.lower().endswith('.svg'):
+        OUTPUT_TYPE="svg"
+        OUTPUT_EXT="svg"
+    elif fname.lower().endswith('.png'):
+        # Otherwise leave the default png
+        pass
+    else:
+        print("Error: unknown graph extension.")
+        sys.exit(1)
+
+    # Leave just the base name
+    fname = fname[:-4]
+
+    read_comments(session)
 
     gnuplot = run_process("gnuplot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
@@ -203,7 +219,7 @@ def graph(name):
 
     g(f"set terminal {OUTPUT_TYPE} size 1200,800 background '#222222' font 'Courier-New,8'")
 
-    g(f"set output '{name}.{OUTPUT_EXT}'")
+    g(f"set output '{fname}.{OUTPUT_EXT}'")
 
     g(f"set multiplot layout {NUMBER_OF_PLOTS},1 title \"\\n\\n\\n\"")
 
@@ -231,9 +247,9 @@ def graph(name):
     g("set object rectangle from graph 0, graph 0 to graph 2, graph 2 behind fillcolor rgb '#111111' fillstyle solid noborder")
     g(f"set object rectangle from '{START_DATE.replace(' ', '-')}', 0 to '{END_DATE.replace(' ', '-')}', 100 behind fillcolor rgb '#000000' fillstyle solid noborder")
 
-    plot("cpu % load (user)", f"cpu load (average = {AVERAGE_LOAD:.2f} %)", name, 2)
-    plot("ram % usage", f"ram usage (max = {MAX_USED_RAM:.2f} GB)", name, 3)
-    plot(f"{NAME_FS}'", f"{NAME_FS} usage (max = {MAX_USED_FS:.2f} MB)", name, 4)
+    plot("cpu % load (user)", f"cpu load (average = {AVERAGE_LOAD:.2f} %)", session, 2)
+    plot("ram % usage", f"ram usage (max = {MAX_USED_RAM:.2f} GB)", session, 3)
+    plot(f"{NAME_FS}'", f"{NAME_FS} usage (max = {MAX_USED_FS:.2f} MB)", session, 4)
 
     g("unset multiplot")
     g("unset output")

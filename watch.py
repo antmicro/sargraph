@@ -68,7 +68,7 @@ def read_table(f):
 
 
 # Initialize 'data.txt' where the data is dumped
-def initialize(name, machine):
+def initialize(session, machine):
     global TOTAL_RAM
 
     with open("/proc/meminfo") as f:
@@ -87,7 +87,7 @@ def initialize(name, machine):
                 cpu_name = line.replace("\n", "").split(": ")[1]
                 break
 
-    with open(f"{name}.txt", "w") as f:
+    with open(f"{session}.txt", "w") as f:
         print(f"# pid: {os.getpid()}",
               f"machine: {uname}",
               f"cpu count: {cpus}",
@@ -96,7 +96,7 @@ def initialize(name, machine):
 
 
 # Add a summary comment to 'data.txt'
-def summarize(name):
+def summarize(session):
     average_load = TOTAL_LOAD / float(SAMPLE_NUMBER)
     max_used_ram = MAX_USED_RAM / 1024.0 / 1024.0
     max_used_fs = MAX_USED_FS / 1024.0
@@ -105,7 +105,7 @@ def summarize(name):
     edt = datetime.datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
     delta_t = ((edt - sdt).total_seconds()) / 60.0
 
-    with open(f"{name}.txt", "a") as f:
+    with open(f"{session}.txt", "a") as f:
         print(f"# total ram: {TOTAL_RAM:.2f} GB",
               f"total disk space: {TOTAL_FS:.2f} GB",
               f"max ram used: {max_used_ram:.2f} GB",
@@ -117,7 +117,7 @@ def summarize(name):
 
 
 # Run sar and gather data from it
-def watch(name, fsdev):
+def watch(session, fsdev):
     global SAMPLE_NUMBER
     global START_DATE
     global END_DATE
@@ -131,12 +131,15 @@ def watch(name, fsdev):
 
     global die
 
+    # Was a graph alreay produced by save command from sargraph?
+    dont_plot = False
+
     my_env = os.environ
     my_env["S_TIME_FORMAT"] = "ISO"
     p = run_process("sar", "-F", "-u", "-r", "1", stdout=subprocess.PIPE, env=my_env)
 
     machine = p.stdout.readline().decode()
-    initialize(name, machine)
+    initialize(session, machine)
     p.stdout.readline()
 
     signal.signal(signal.SIGTERM, kill_handler)
@@ -151,13 +154,32 @@ def watch(name, fsdev):
         now = datetime.datetime.now()
         if sys.stdin in rlist:
             label_line = sys.stdin.readline().replace("\n", "")
-            if label_line == "q":
-                die = 1
-                break
+            if label_line.startswith("command:"):
+                label_line = label_line[len("command:"):]
+                if label_line == "q":
+                    die = 1
+                    break
+                elif label_line.startswith("s:"):
+                    label_line = label_line[len("s:"):]
 
-            with open(f"{name}.txt", "a") as f:
-                timestamp = now.strftime("%Y-%m-%d-%H:%M:%S")
-                print(f"# {timestamp} label: {label_line}", file=f)
+                    dont_plot = True
+
+                    if label_line != "none":
+                        import graph
+                        summarize(session)
+                    if not label_line:
+                        graph.graph(session)
+                    else:
+                        graph.graph(session, label_line)
+                elif label_line == "b":
+                    dont_plot = True
+                    die = 1
+                    break
+            elif label_line.startswith('label:'):
+                label_line = label_line[len('label:'):]
+                with open(f"{session}.txt", "a") as f:
+                    timestamp = now.strftime("%Y-%m-%d-%H:%M:%S")
+                    print(f"# {timestamp} label: {label_line}", file=f)
         if (p.stdout not in rlist):
             continue
 
@@ -200,7 +222,7 @@ def watch(name, fsdev):
         END_DATE = date + " " + daytime
         timestamp = date + "-" + daytime
 
-        with open(f"{name}.txt", "a") as f:
+        with open(f"{session}.txt", "a") as f:
             print(timestamp,
                   cpu_data['%user'][0],
                   ram_data['%memused'][0],
@@ -214,4 +236,8 @@ def watch(name, fsdev):
         time.sleep(1)
         sys.exit(0)
 
-    summarize(name)
+    summarize(session)
+
+    if not dont_plot:
+        import graph
+        graph.graph(session)
