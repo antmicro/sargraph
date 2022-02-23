@@ -166,6 +166,9 @@ def graph(session, fname='plot.png'):
 
     labels = []
 
+    # The default format
+    OUTPUT_TYPE="pngcairo"
+    OUTPUT_EXT="png"
     if "SARGRAPH_OUTPUT_TYPE" in os.environ:
         if os.environ["SARGRAPH_OUTPUT_TYPE"] == "svg":
             OUTPUT_TYPE="svg"
