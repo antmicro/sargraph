@@ -49,8 +49,7 @@ labels = []
 p = run_or_fail("gnuplot", "--version", stdout=subprocess.PIPE)
 version = scan(r"gnuplot (\S+)", float, p.stdout.readline().decode())
 if version < GNUPLOT_VERSION_EXPECTED:
-    print(f"Error: Gnuplot version too low. Need at least {GNUPLOT_VERSION_EXPECTED} found {version[0]}")
-    sys.exit(1)
+    fail(f"gnuplot version too low. Need at least {GNUPLOT_VERSION_EXPECTED} found {version[0]}")
 
 
 # Run a command in a running gnuplot process
@@ -180,8 +179,7 @@ def graph(session, fname='plot.png'):
         # Otherwise leave the default png
         pass
     else:
-        print("Error: unknown graph extension.")
-        sys.exit(1)
+        fail("unknown graph extension")
 
     # Leave just the base name
     fname = fname[:-4]

@@ -12,13 +12,18 @@ import sys
 import re
 
 
+# Print an error message and exit with non-zero status
+def fail(msg):
+    print(f"Error: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
 # Run process, return subprocess object on success, exit script on failure
 def run_or_fail(*argv, **kwargs):
     try:
         p = subprocess.Popen(argv, **kwargs)
     except:
-        print(f"Error: '{argv[0]}' tool not found")
-        sys.exit(1)
+        fail(f"'{argv[0]}' tool not found")
     return p
 
 

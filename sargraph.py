@@ -33,8 +33,7 @@ p = run_or_fail("sar", "-V", stdout=subprocess.PIPE)
 p = run_or_fail("screen", "-v", stdout=subprocess.PIPE)
 version = scan("Screen version (\d+)", int, p.stdout.readline().decode())
 if version is None:
-    print("Error: 'screen' tool returned unknown output!")
-    sys.exit(1)
+    fail("'screen' tool returned unknown output")
 
 # If the script was run with no parameters, run in background and gather data
 if args.session is None:
@@ -47,8 +46,7 @@ if args.session is None:
             while args.fsdev is None:
                 args.fsdev = scan(f"^(/dev/\S+)\s+{re.escape(args.fspath)}\s+", str, f.readline())
         if not args.fsdev:
-            print(f"Error: no device is mounted on {args.fspath}")
-            sys.exit(1)
+            fail(f"no device is mounted on {args.fspath}")
 
     watch.watch(args.name, args.fsdev)
     sys.exit(0)
@@ -57,8 +55,7 @@ if args.session is None:
 
 # Check if a command was provided
 if len(args.command) <= 0:
-    print("Error: command not provided.")
-    sys.exit(1)
+    fail("command not provided")
 
 # Get session name and command name
 sid = args.session
@@ -97,8 +94,7 @@ elif cmd[0] == "stop":
 elif cmd[0] == "label":
     # Check if the label name was provided
     if len(cmd) < 2:
-        print("Error: label command requires an additional parameter")
-        sys.exit(1)
+        fail("label command requires an additional parameter")
     print(f"Adding label '{cmd[1]}' to sargraph session '{sid}'.")
     send(sid, f"label:{cmd[1]}")
 elif cmd[0] == 'save':
@@ -114,5 +110,4 @@ elif cmd[0] == 'plot':
     else:
         graph.graph(sid, cmd[1])
 else:
-    print(f"Error: Unknown command '{cmd[0]}'")
-    sys.exit(1)
+    fail(f"unknown command '{cmd[0]}'")
