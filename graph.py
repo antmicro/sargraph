@@ -46,7 +46,7 @@ labels = []
 
 
 # Check if the avaliable gnuplot has a required version
-p = run_process("gnuplot", "--version", stdout=subprocess.PIPE)
+p = run_or_fail("gnuplot", "--version", stdout=subprocess.PIPE)
 version = scan(r"gnuplot (\S+)", float, p.stdout.readline().decode())
 if version < GNUPLOT_VERSION_EXPECTED:
     print(f"Error: Gnuplot version too low. Need at least {GNUPLOT_VERSION_EXPECTED} found {version[0]}")
@@ -188,7 +188,7 @@ def graph(session, fname='plot.png'):
 
     read_comments(session)
 
-    gnuplot = run_process("gnuplot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    gnuplot = run_or_fail("gnuplot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
     sdt = datetime.datetime.strptime(START_DATE, '%Y-%m-%d-%H:%M:%S')
     edt = datetime.datetime.strptime(END_DATE, '%Y-%m-%d-%H:%M:%S')

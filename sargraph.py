@@ -27,10 +27,10 @@ def send(sid, msg):
         time.sleep(0.1)
 
 # Check if sar is available
-p = run_process("sar", "-V", stdout=subprocess.PIPE)
+p = run_or_fail("sar", "-V", stdout=subprocess.PIPE)
 
 # Check if screen is available
-p = run_process("screen", "-v", stdout=subprocess.PIPE)
+p = run_or_fail("screen", "-v", stdout=subprocess.PIPE)
 version = scan("Screen version (\d+)", int, p.stdout.readline().decode())
 if version is None:
     print("Error: 'screen' tool returned unknown output!")

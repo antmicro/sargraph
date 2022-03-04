@@ -136,7 +136,7 @@ def watch(session, fsdev):
 
     my_env = os.environ
     my_env["S_TIME_FORMAT"] = "ISO"
-    p = run_process("sar", "-F", "-u", "-r", "1", stdout=subprocess.PIPE, env=my_env)
+    p = run_or_fail("sar", "-F", "-u", "-r", "1", stdout=subprocess.PIPE, env=my_env)
 
     machine = p.stdout.readline().decode()
     initialize(session, machine)

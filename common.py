@@ -12,8 +12,8 @@ import sys
 import re
 
 
-# Run process, return subprocess object on success, exit script on fail
-def run_process(*argv, **kwargs):
+# Run process, return subprocess object on success, exit script on failure
+def run_or_fail(*argv, **kwargs):
     try:
         p = subprocess.Popen(argv, **kwargs)
     except:
