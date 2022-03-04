@@ -60,7 +60,7 @@ def g(command):
     if not (gnuplot.poll() is None):
         print("Error: gnuplot not running!")
         return
-    print ("gnuplot> %s" % command)
+    # print ("gnuplot> %s" % command)
     try:
         command = b"%s\n" % command
     except:
