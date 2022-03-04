@@ -88,7 +88,8 @@ def initialize(session, machine):
                 break
 
     with open(f"{session}.txt", "w") as f:
-        print(f"# pid: {os.getpid()}",
+        print(f"# sargraph version: {SARGRAPH_VERSION}",
+              f"pid: {os.getpid()}",
               f"machine: {uname}",
               f"cpu count: {cpus}",
               f"cpu: {cpu_name}",

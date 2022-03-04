@@ -17,7 +17,7 @@ from common import *
 
 global gnuplot
 
-GNUPLOT_VERSION_EXPECTED = 5.0
+GNUPLOT_VERSION_EXPECTED = "5.0"
 
 START_DATE = ""
 END_DATE = ""
@@ -47,9 +47,9 @@ labels = []
 
 # Check if the avaliable gnuplot has a required version
 p = run_or_fail("gnuplot", "--version", stdout=subprocess.PIPE)
-version = scan(r"gnuplot (\S+)", float, p.stdout.readline().decode())
-if version < GNUPLOT_VERSION_EXPECTED:
-    fail(f"gnuplot version too low. Need at least {GNUPLOT_VERSION_EXPECTED} found {version[0]}")
+version = scan(r"gnuplot (\S+)", str, p.stdout.readline().decode())
+if not is_version_ge(version, GNUPLOT_VERSION_EXPECTED):
+    fail(f"gnuplot version too low. Need at least {GNUPLOT_VERSION_EXPECTED} found {version}")
 
 
 # Run a command in a running gnuplot process
@@ -94,6 +94,8 @@ def read_comments(session):
     global CPU_NAME
     global DURATION
 
+    data_version = None
+
     with open(f"{session}.txt", "r") as f:
         for line in f:
             value = None
@@ -113,6 +115,10 @@ def read_comments(session):
 
                 # Comments are not mixed with anything else, so skip
                 continue
+
+            value = scan("sargraph version: (\d+\.\d+)", str, line)
+            if value is not None:
+                data_version = value
 
             value = scan("machine: ([^,]+)", str, line)
             if value is not None:
@@ -154,6 +160,9 @@ def read_comments(session):
             if value is not None:
                 AVERAGE_LOAD = value
 
+    if data_version != SARGRAPH_VERSION:
+        print("Warning: the data comes from an incompatible version of sargraph")
+
 
 def graph(session, fname='plot.png'):
     global OUTPUT_TYPE
@@ -193,7 +202,7 @@ def graph(session, fname='plot.png'):
 
     seconds_between = (edt - sdt).total_seconds()
     if seconds_between < 100:
-     seconds_between = 100
+        seconds_between = 100
 
     nsdt = sdt - datetime.timedelta(seconds = (seconds_between * 0.01))
     nedt = edt + datetime.timedelta(seconds = (seconds_between * 0.01))

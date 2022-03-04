@@ -12,6 +12,11 @@ import sys
 import re
 
 
+# Increase major number for general changes, middle number for smaller changes
+# that can cause incompatibilities and minor number for regular fixes
+SARGRAPH_VERSION = "2.0.0"
+
+
 # Print an error message and exit with non-zero status
 def fail(msg):
     print(f"Error: {msg}", file=sys.stderr)
@@ -47,3 +52,16 @@ def scan(regex, conv, string):
     except ValueError:
         return None
     return value
+
+
+# Return True iff version string `a` is greater than or equal to `b`
+def is_version_ge(a, b):
+    a = [int(n) for n in a.split('.')]
+    b = [int(n) for n in b.split('.')]
+
+    if len(a) != len(b):
+        return len(a) > len(b)
+    for i, _ in enumerate(a):
+        if a[i] != b[i]:
+            break
+    return a[i] >= b[i]
