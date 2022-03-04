@@ -2,7 +2,7 @@
 
 #
 # (c) 2019-2022 Antmicro <www.antmicro.com>
-# License: Apache
+# License: Apache-2.0
 #
 
 import argparse
