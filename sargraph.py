@@ -68,7 +68,7 @@ if cmd[0] == "start":
     print(f"Starting sargraph session '{sid}'")
 
     # Spawn watcher process, *sys.argv[3:] is all arguments after 'chart start'
-    p = subprocess.Popen(["screen", "-dmSL", sid, os.path.realpath(__file__), *sys.argv[3:], '-o', sid])
+    p = subprocess.Popen(["screen", "-Logfile", f"{sid}.log", "-dmSL", sid, os.path.realpath(__file__), *sys.argv[3:], '-o', sid])
 
     while p.poll() is None:
         time.sleep(0.1)
