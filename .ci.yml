@@ -24,11 +24,11 @@ simple_test:
     - sargraph chart stop
 
     - cd ..
-    - cat screenlog.0
+    - cat chart.log
     - test -f plot.svg
   artifacts:
     when: always
     paths:
       - "*.svg"
       - "*.txt"
-      - "screenlog.*"
+      - "*.log"
