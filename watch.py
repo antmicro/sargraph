@@ -100,6 +100,10 @@ def initialize(session, machine):
 
 # Add a summary comment to 'data.txt'
 def summarize(session):
+    # Is there anything to be summarized?
+    if SAMPLE_NUMBER == 0:
+        return
+
     average_load = TOTAL_LOAD / float(SAMPLE_NUMBER)
     max_used_ram = MAX_USED_RAM / 1024.0 / 1024.0
     max_used_fs = MAX_USED_FS / 1024.0
@@ -169,6 +173,7 @@ def watch(session, fsdev):
                         graph.graph(session, label_line)
                     elif not dont_plot:
                         graph.graph(session)
+                    dont_plot = True
                     die = 1
                     break
                 elif label_line.startswith("s:"):
@@ -239,6 +244,7 @@ def watch(session, fsdev):
         if die:
             break
 
-    if SAMPLE_NUMBER == 0:
-        time.sleep(1)
-        sys.exit(0)
+    # This runs if we were stopped by SIGTERM and no plot was made so far
+    if not dont_plot:
+        summarize(session)
+        plot.plot(session)
