@@ -16,6 +16,8 @@ import subprocess
 import sys
 import time
 
+import graph
+
 from common import *
 
 die = 0
@@ -164,10 +166,8 @@ def watch(session, fsdev):
                     if label_line == "none":
                         pass
                     elif label_line:
-                        import graph
                         graph.graph(session, label_line)
                     elif not dont_plot:
-                        import graph
                         graph.graph(session)
                     die = 1
                     break
@@ -177,7 +177,6 @@ def watch(session, fsdev):
                     dont_plot = True
 
                     if label_line != "none":
-                        import graph
                         summarize(session)
                     if not label_line:
                         graph.graph(session)

@@ -9,6 +9,8 @@ import argparse
 import sys
 import time
 
+import graph
+import watch
 
 from common import *
 
@@ -37,8 +39,6 @@ if version is None:
 
 # If the script was run with no parameters, run in background and gather data
 if args.session is None:
-    import watch
-
     # Find requested disk device
     if args.fspath:
         args.fspath = os.path.realpath(args.fspath)
@@ -104,7 +104,6 @@ elif cmd[0] == 'save':
     else:
         send(sid, f"command:s:{cmd[1]}")
 elif cmd[0] == 'plot':
-    import graph
     if len(cmd) < 2:
         graph.graph(sid)
     else:
