@@ -151,6 +151,7 @@ def watch(session, fsdev):
 
     signal.signal(signal.SIGTERM, kill_handler)
 
+    # Make stdin nonblocking to continue working when no command is sent
     flags = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
     fcntl.fcntl(sys.stdin, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
