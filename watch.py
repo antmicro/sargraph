@@ -193,7 +193,7 @@ def watch(session, fsdev):
                 with open(f"{session}.txt", "a") as f:
                     timestamp = now.strftime("%Y-%m-%d-%H:%M:%S")
                     print(f"# {timestamp} label: {label_line}", file=f)
-        if (p.stdout not in rlist):
+        if p.stdout not in rlist:
             continue
 
         date = now.strftime("%Y-%m-%d")
