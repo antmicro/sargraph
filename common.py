@@ -16,6 +16,10 @@ import re
 # that can cause incompatibilities and minor number for regular fixes
 SARGRAPH_VERSION = "2.0.0"
 
+# Define units for use with unit_str
+TIME_UNITS = ['seconds', 'minutes', 'hours']
+DATA_UNITS = ['B', 'kB', 'MB', 'GB', 'TB', 'PB']
+
 
 # Print an error message and exit with non-zero status
 def fail(msg):
@@ -40,6 +44,19 @@ def pid_running(pid):
 # Convert a string to float, also when the separator is a comma
 def stof(s):
     return float(s.replace(',', '.'))
+
+
+# Scale a value until it has a convenient size and unit, round the value
+# and return a string representation with the new value and its unit
+def unit_str(value, units, step=1024):
+    value = float(value)
+    biggest = len(units) - 1
+    unit = 0
+
+    while value >= step and unit < biggest:
+        value /= step
+        unit += 1
+    return f"{round(value, 2)} {units[unit]}"
 
 
 # Get the first group from a given match and convert to required type
