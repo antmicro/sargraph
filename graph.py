@@ -268,7 +268,7 @@ def graph(session, fname='plot.png'):
 
     plot("cpu % load (user)", f"cpu load (average = {AVERAGE_LOAD:.2f} %)", session, 2)
     plot("ram % usage", f"ram usage (max = {MAX_USED_RAM})", session, 3)
-    plot(f"{NAME_FS}'", f"{NAME_FS} usage (max = {MAX_USED_FS})", session, 4)
+    plot(f"{NAME_FS}", f"{NAME_FS} usage (max = {MAX_USED_FS})", session, 4)
 
     g("unset multiplot")
     g("unset output")
