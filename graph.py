@@ -251,15 +251,21 @@ def graph(session, fname='plot.png'):
 
     i = 0
     for label in labels:
+        if i%2 == 0:
+            height = 0.90
+        else:
+            height = 0.83
+
         i = i + 1
-        g(f"set arrow nohead from '{label[0]}', graph 0.01 to '{label[0]}', graph 0.87 front lc rgb 'red' dt 2")
-        g(f"set object rect at '{label[0]}', graph 0.90 size char {len('%d' % i)+1}, char 1.5 fc rgb 'red'")
+
+        g(f"set arrow nohead from '{label[0]}', graph 0.01 to '{label[0]}', graph {height-0.06} front lc rgb 'red' dt 2")
+        g(f"set object rect at '{label[0]}', graph {height-0.03} size char {len('%d' % i)+1}, char 1 fc rgb 'red'")
         g(f"set object rect at '{label[0]}', graph 0.0 size char 0.5, char 0.5 front fc rgb 'red'")
-        g(f"set label at '{label[0]}', graph 0.90 '{i}' center tc rgb 'black' font 'Courier-New,7'")
-        g(f"set label at '{label[0]}', graph 0.95 '{label[1][0:20]}' center tc rgb 'white' font 'Courier-New,7'")
+        g(f"set label at '{label[0]}', graph {height-0.02} '{i}' center tc rgb 'black' font 'Courier-New,7'")
+        g(f"set label at '{label[0]}', graph {height+0.05} '{label[1][0:30]}' center tc rgb 'white' font 'Courier-New,7'")
 
     if i > 0:
-        g("set yrange [0:119]")
+        g("set yrange [0:139]")
     else:
         g("set yrange [0:100]")
 
