@@ -160,8 +160,17 @@ def read_comments(session):
             if value is not None:
                 AVERAGE_LOAD = value
 
-    if data_version != SARGRAPH_VERSION:
+    if data_version != scan("^(\d+\.\d+)", str, SARGRAPH_VERSION):
         print("Warning: the data comes from an incompatible version of sargraph")
+
+    # Translate the values to their value-unit representations
+    TOTAL_RAM = unit_str(TOTAL_RAM, DATA_UNITS)
+    MAX_USED_RAM = unit_str(MAX_USED_RAM, DATA_UNITS)
+
+    TOTAL_FS = unit_str(TOTAL_FS, DATA_UNITS)
+    MAX_USED_FS = unit_str(MAX_USED_FS, DATA_UNITS)
+
+    DURATION = unit_str(DURATION, TIME_UNITS, 60)
 
 
 def graph(session, fname='plot.png'):
@@ -237,8 +246,8 @@ def graph(session, fname='plot.png'):
 
     g(f"set xrange ['{nsdt.strftime('%Y-%m-%d-%H:%M:%S')}':'{nedt.strftime('%Y-%m-%d-%H:%M:%S')}']");
 
-    g(f"set label 101 at screen 0.02, screen 0.95 'Running on {{/:Bold {HOST}}} \@ {{/:Bold {UNAME}}}, {{/:Bold {CPUS}}} threads x {{/:Bold {CPU_NAME}}}, total ram: {{/:Bold {TOTAL_RAM:.2f} GB}}, total disk space: {{/:Bold {TOTAL_FS:.2f} GB}}' tc rgb 'white'")
-    g(f"set label 102 at screen 0.02, screen 0.93 'Duration: {{/:Bold {START_DATE}}} .. {{/:Bold {END_DATE}}} ({DURATION:.2f} minutes)' tc rgb 'white'")
+    g(f"set label 101 at screen 0.02, screen 0.95 'Running on {{/:Bold {HOST}}} \@ {{/:Bold {UNAME}}}, {{/:Bold {CPUS}}} threads x {{/:Bold {CPU_NAME}}}, total ram: {{/:Bold {TOTAL_RAM}}}, total disk space: {{/:Bold {TOTAL_FS}}}' tc rgb 'white'")
+    g(f"set label 102 at screen 0.02, screen 0.93 'Duration: {{/:Bold {START_DATE}}} .. {{/:Bold {END_DATE}}} ({DURATION})' tc rgb 'white'")
 
     i = 0
     for label in labels:
@@ -258,8 +267,8 @@ def graph(session, fname='plot.png'):
     g(f"set object rectangle from '{START_DATE.replace(' ', '-')}', 0 to '{END_DATE.replace(' ', '-')}', 100 behind fillcolor rgb '#000000' fillstyle solid noborder")
 
     plot("cpu % load (user)", f"cpu load (average = {AVERAGE_LOAD:.2f} %)", session, 2)
-    plot("ram % usage", f"ram usage (max = {MAX_USED_RAM:.2f} GB)", session, 3)
-    plot(f"{NAME_FS}'", f"{NAME_FS} usage (max = {MAX_USED_FS:.2f} MB)", session, 4)
+    plot("ram % usage", f"ram usage (max = {MAX_USED_RAM})", session, 3)
+    plot(f"{NAME_FS}'", f"{NAME_FS} usage (max = {MAX_USED_FS})", session, 4)
 
     g("unset multiplot")
     g("unset output")
