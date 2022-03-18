@@ -75,7 +75,7 @@ def g(command):
 # Plot a single column of values from data.txt
 def plot(ylabel, title, session, column):
     g(f"set ylabel '{ylabel}'")
-    g(f"set title \"{title}\\n\\n\\n\"")
+    g(f"set title \"\\n{{/:Bold=12 {title}}}\\n\\n\\n\\n\"")
     g(f"plot '{session}.txt' using 1:{column}:{column} title 'cpu' with boxes palette")
 
 
@@ -236,33 +236,38 @@ def graph(session, fname='plot.png'):
     g("unset key")
     g("set rmargin 6")
 
-    g(f"set terminal {OUTPUT_TYPE} size 1200,800 background '#222222' font 'Courier-New,8'")
+    g(f"set terminal {OUTPUT_TYPE} size 1200,1200 background '#222222' font 'Monospace,8'")
 
     g(f"set output '{fname}.{OUTPUT_EXT}'")
 
-    g(f"set multiplot layout {NUMBER_OF_PLOTS},1 title \"\\n\\n\\n\"")
+    title_machine = f"Running on {{/:Bold {HOST}}} \@ {{/:Bold {UNAME}}}, {{/:Bold {CPUS}}} threads x {{/:Bold {CPU_NAME}}}"
+    title_specs = f"Total ram: {{/:Bold {TOTAL_RAM}}}, Total disk space: {{/:Bold {TOTAL_FS}}}"
+    title_times = f"Duration: {{/:Bold {START_DATE}}} .. {{/:Bold {END_DATE}}} ({DURATION})"
 
-    g("set title tc rgb 'white' font 'Courier-New,8'")
+    g(f"set multiplot layout {NUMBER_OF_PLOTS},1 title \"\\n{title_machine}\\n{title_specs}\\n{title_times}\\n\" offset screen -0.475, 0 left tc rgb 'white'")
 
-    g(f"set xrange ['{nsdt.strftime('%Y-%m-%d-%H:%M:%S')}':'{nedt.strftime('%Y-%m-%d-%H:%M:%S')}']");
+    g("set title tc rgb 'white' font 'Courier-New,11'")
 
-    g(f"set label 101 at screen 0.02, screen 0.95 'Running on {{/:Bold {HOST}}} \@ {{/:Bold {UNAME}}}, {{/:Bold {CPUS}}} threads x {{/:Bold {CPU_NAME}}}, total ram: {{/:Bold {TOTAL_RAM}}}, total disk space: {{/:Bold {TOTAL_FS}}}' tc rgb 'white'")
-    g(f"set label 102 at screen 0.02, screen 0.93 'Duration: {{/:Bold {START_DATE}}} .. {{/:Bold {END_DATE}}} ({DURATION})' tc rgb 'white'")
+    g(f"set xrange ['{nsdt.strftime('%Y-%m-%d-%H:%M:%S')}':'{nedt.strftime('%Y-%m-%d-%H:%M:%S')}']")
 
     i = 0
     for label in labels:
         if i%2 == 0:
-            height = 1.19
+            offset = 1.10
         else:
-            height = 1.06
+            offset = 1.25
 
         i = i + 1
 
-        g(f"set arrow nohead from '{label[0]}', graph 0.01 to '{label[0]}', graph {height} front lc rgb 'red' dt 2")
-        #g(f"set object rect at '{label[0]}', graph {height-0.03} size char {len('%d' % i)+1}, char 1 fc rgb 'red'")
+        content = f"{{[{i}] {label[1][0:30]}"
+        length = len(label[1][0:30]) + len(str(i)) + 5
+        if OUTPUT_EXT == "svg":
+          length *= 0.625
+
+        g(f"set arrow nohead from '{label[0]}', graph 0.01 to '{label[0]}', graph {offset-0.04} front lc rgb 'red' dt 2")
         g(f"set object rect at '{label[0]}', graph 0.0 size char 0.5, char 0.5 front fc rgb 'red'")
-        #g(f"set label at '{label[0]}', graph {height-0.03} '{i}' center tc rgb 'black' font 'Courier-New,7'")
-        g(f"set label at '{label[0]}', graph {height+0.07} '[{i}] {label[1][0:30]}' center tc rgb 'white' font 'Courier-New,7'")
+        g(f"set object rect at '{label[0]}', graph {offset} size char {length}, char 1.3 fs border lc rgb 'red' fc rgb '#222222'")
+        g(f"set label at '{label[0]}', graph {offset} '{content}' center tc rgb 'white' font 'Courier-New,7'")
 
     if i > 0:
         g("set yrange [0:100]")
