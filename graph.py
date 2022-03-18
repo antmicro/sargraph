@@ -252,7 +252,7 @@ def graph(session, fname='plot.png'):
     i = 0
     for label in labels:
         if i%2 == 0:
-            height = 1.20
+            height = 1.22
         else:
             height = 1.12
 
