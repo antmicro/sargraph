@@ -216,7 +216,12 @@ def graph(session, fname='plot.png'):
     nsdt = sdt - datetime.timedelta(seconds = (seconds_between * 0.01))
     nedt = edt + datetime.timedelta(seconds = (seconds_between * 0.01))
 
-    g("set ylabel tc rgb 'white' font 'Courier-New,8'")
+    if OUTPUT_EXT == 'svg':
+        g(f"set terminal {OUTPUT_TYPE} size 1200,1200 background '#222222' fname 'Monospace,8'")
+    else:
+        g(f"set terminal {OUTPUT_TYPE} size 1200,1200 background '#222222' font 'Monospace,8'")
+
+    g("set ylabel tc rgb 'white' font 'Monospace,8'")
 
     g("set datafile commentschars '#'")
 
@@ -226,8 +231,8 @@ def graph(session, fname='plot.png'):
     g("set key tc rgb 'white'")
     g("set timefmt '%Y-%m-%d-%H:%M:%S'")
     g("set xtics format '%H:%M:%S'")
-    g("set xtics font 'Courier-New,8' tc rgb 'white'")
-    g("set ytics font 'Courier-New,8' tc rgb 'white'")
+    g("set xtics font 'Monospace,8' tc rgb 'white'")
+    g("set ytics font 'Monospace,8' tc rgb 'white'")
     g("set grid xtics ytics ls 12 lc rgb '#444444'")
     g("set style fill solid")
     g("set palette defined ( 0.2 '#00ff00', 0.8 '#ff0000' )")
@@ -236,7 +241,6 @@ def graph(session, fname='plot.png'):
     g("unset key")
     g("set rmargin 6")
 
-    g(f"set terminal {OUTPUT_TYPE} size 1200,1200 background '#222222' font 'Monospace,8'")
 
     g(f"set output '{fname}.{OUTPUT_EXT}'")
 
@@ -246,7 +250,7 @@ def graph(session, fname='plot.png'):
 
     g(f"set multiplot layout {NUMBER_OF_PLOTS},1 title \"\\n{title_machine}\\n{title_specs}\\n{title_times}\\n\" offset screen -0.475, 0 left tc rgb 'white'")
 
-    g("set title tc rgb 'white' font 'Courier-New,11'")
+    g("set title tc rgb 'white' font 'Monospace,11'")
 
     g(f"set xrange ['{nsdt.strftime('%Y-%m-%d-%H:%M:%S')}':'{nedt.strftime('%Y-%m-%d-%H:%M:%S')}']")
 
@@ -267,7 +271,7 @@ def graph(session, fname='plot.png'):
         g(f"set arrow nohead from '{label[0]}', graph 0.01 to '{label[0]}', graph {offset-0.04} front lc rgb 'red' dt 2")
         g(f"set object rect at '{label[0]}', graph 0.0 size char 0.5, char 0.5 front fc rgb 'red'")
         g(f"set object rect at '{label[0]}', graph {offset} size char {length}, char 1.3 fs border lc rgb 'red' fc rgb '#222222'")
-        g(f"set label at '{label[0]}', graph {offset} '{content}' center tc rgb 'white' font 'Courier-New,7'")
+        g(f"set label at '{label[0]}', graph {offset} '{content}' center tc rgb 'white' font 'Monospace,7'")
 
     if i > 0:
         g("set yrange [0:100]")
