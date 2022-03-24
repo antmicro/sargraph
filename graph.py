@@ -72,10 +72,17 @@ def g(command):
             time.sleep(0.25)
 
 
+# Get gnuplot font size with respect to differences betwen SVG and PNG terminals
+def fix_size(size):
+    if OUTPUT_TYPE == "svg":
+        size = int(size*1.25)
+    return size
+
+
 # Plot a single column of values from data.txt
 def plot(ylabel, title, session, column):
     g(f"set ylabel '{ylabel}'")
-    g(f"set title \"\\n{{/:Bold=12 {title}}}\\n\\n\\n\\n\"")
+    g(f"set title \"\\n{{/:Bold {title}}}\\n\\n\\n\"")
     g(f"plot '{session}.txt' using 1:{column}:{column} title 'cpu' with boxes palette")
 
 
@@ -216,12 +223,9 @@ def graph(session, fname='plot.png'):
     nsdt = sdt - datetime.timedelta(seconds = (seconds_between * 0.01))
     nedt = edt + datetime.timedelta(seconds = (seconds_between * 0.01))
 
-    if OUTPUT_EXT == 'svg':
-        g(f"set terminal {OUTPUT_TYPE} size 1200,1200 background '#222222' fname 'Monospace,8'")
-    else:
-        g(f"set terminal {OUTPUT_TYPE} size 1200,1200 background '#222222' font 'Monospace,8'")
+    g(f"set terminal {OUTPUT_TYPE} size 1200,1200 background '#222222' font 'monospace,{fix_size(8)}'")
 
-    g("set ylabel tc rgb 'white' font 'Monospace,8'")
+    g(f"set ylabel tc rgb 'white' font 'monospace,{fix_size(8)}'")
 
     g("set datafile commentschars '#'")
 
@@ -231,8 +235,8 @@ def graph(session, fname='plot.png'):
     g("set key tc rgb 'white'")
     g("set timefmt '%Y-%m-%d-%H:%M:%S'")
     g("set xtics format '%H:%M:%S'")
-    g("set xtics font 'Monospace,8' tc rgb 'white'")
-    g("set ytics font 'Monospace,8' tc rgb 'white'")
+    g(f"set xtics font 'monospace,{fix_size(8)}' tc rgb 'white'")
+    g(f"set ytics font 'monospace,{fix_size(8)}' tc rgb 'white'")
     g("set grid xtics ytics ls 12 lc rgb '#444444'")
     g("set style fill solid")
     g("set palette defined ( 0.2 '#00ff00', 0.8 '#ff0000' )")
@@ -250,7 +254,7 @@ def graph(session, fname='plot.png'):
 
     g(f"set multiplot layout {NUMBER_OF_PLOTS},1 title \"\\n{title_machine}\\n{title_specs}\\n{title_times}\\n\" offset screen -0.475, 0 left tc rgb 'white'")
 
-    g("set title tc rgb 'white' font 'Monospace,11'")
+    g(f"set title tc rgb 'white' font 'monospace,{fix_size(11)}'")
 
     g(f"set xrange ['{nsdt.strftime('%Y-%m-%d-%H:%M:%S')}':'{nedt.strftime('%Y-%m-%d-%H:%M:%S')}']")
 
@@ -259,19 +263,19 @@ def graph(session, fname='plot.png'):
         if i%2 == 0:
             offset = 1.10
         else:
-            offset = 1.25
+            offset = 1.22
 
         i = i + 1
 
         content = f"{{[{i}] {label[1][0:30]}"
         length = len(label[1][0:30]) + len(str(i)) + 5
         if OUTPUT_EXT == "svg":
-          length *= 0.625
+          length *= 0.75
 
         g(f"set arrow nohead from '{label[0]}', graph 0.01 to '{label[0]}', graph {offset-0.04} front lc rgb 'red' dt 2")
         g(f"set object rect at '{label[0]}', graph 0.0 size char 0.5, char 0.5 front fc rgb 'red'")
         g(f"set object rect at '{label[0]}', graph {offset} size char {length}, char 1.3 fs border lc rgb 'red' fc rgb '#222222'")
-        g(f"set label at '{label[0]}', graph {offset} '{content}' center tc rgb 'white' font 'Monospace,7'")
+        g(f"set label at '{label[0]}', graph {offset} '{content}' center tc rgb 'white' font 'monospace,{fix_size(7)}'")
 
     if i > 0:
         g("set yrange [0:100]")
