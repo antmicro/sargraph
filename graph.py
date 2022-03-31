@@ -82,7 +82,7 @@ def fix_size(size):
 # Plot a single column of values from data.txt
 def plot(ylabel, title, session, column):
     g(f"set ylabel '{ylabel}'")
-    g(f"set title \"\\n{{/:Bold {title}}}\\n\\n\\n\"")
+    g(f"set title \"{{/:Bold {title}}}\\n\\n\\n\"")
     g(f"plot '{session}.txt' using 1:{column}:{column} title 'cpu' with boxes palette")
 
 
@@ -252,7 +252,7 @@ def graph(session, fname='plot.png'):
     title_specs = f"Total ram: {{/:Bold {TOTAL_RAM}}}, Total disk space: {{/:Bold {TOTAL_FS}}}"
     title_times = f"Duration: {{/:Bold {START_DATE}}} .. {{/:Bold {END_DATE}}} ({DURATION})"
 
-    g(f"set multiplot layout {NUMBER_OF_PLOTS},1 title \"\\n{title_machine}\\n{title_specs}\\n{title_times}\\n\" offset screen -0.475, 0 left tc rgb 'white'")
+    g(f"set multiplot layout {NUMBER_OF_PLOTS},1 title \"\\n{title_machine}\\n{title_specs}\\n{title_times}\" offset screen -0.475, 0 left tc rgb 'white'")
 
     g(f"set title tc rgb 'white' font 'monospace,{fix_size(11)}'")
 
