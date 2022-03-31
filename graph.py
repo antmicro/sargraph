@@ -261,9 +261,9 @@ def graph(session, fname='plot.png'):
     i = 0
     for label in labels:
         if i%2 == 0:
-            offset = 1.10
+            offset = 1.08
         else:
-            offset = 1.22
+            offset = 1.20
 
         i = i + 1
 
