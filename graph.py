@@ -80,9 +80,9 @@ def fix_size(size):
 
 
 # Plot a single column of values from data.txt
-def plot(ylabel, title, session, column):
+def plot(ylabel, title, session, column, space=3):
     g(f"set ylabel '{ylabel}'")
-    g(f"set title \"{{/:Bold {title}}}\\n\\n\\n\"")
+    g(f"set title \"{{/:Bold {title}}}" + ("\\n" * space) + "\"")
     g(f"plot '{session}.txt' using 1:{column}:{column} title 'cpu' with boxes palette")
 
 
@@ -277,17 +277,20 @@ def graph(session, fname='plot.png'):
         g(f"set object rect at '{label[0]}', graph {offset} size char {length}, char 1.3 fs border lc rgb 'red' fc rgb '#222222'")
         g(f"set label at '{label[0]}', graph {offset} '{content}' center tc rgb 'white' font 'monospace,{fix_size(7)}'")
 
-    if i > 0:
-        g("set yrange [0:100]")
+    if i <= 0:
+        space = 1
+    elif i <= 1:
+        space = 2
     else:
-        g("set yrange [0:100]")
+        space = 3
+    g("set yrange [0:100]")
 
     g("set object rectangle from graph 0, graph 0 to graph 2, graph 2 behind fillcolor rgb '#111111' fillstyle solid noborder")
     g(f"set object rectangle from '{START_DATE.replace(' ', '-')}', 0 to '{END_DATE.replace(' ', '-')}', 100 behind fillcolor rgb '#000000' fillstyle solid noborder")
 
-    plot("cpu % load (user)", f"cpu load (average = {AVERAGE_LOAD:.2f} %)", session, 2)
-    plot("ram % usage", f"ram usage (max = {MAX_USED_RAM})", session, 3)
-    plot(f"{NAME_FS}", f"{NAME_FS} usage (max = {MAX_USED_FS})", session, 4)
+    plot("cpu % load (user)", f"cpu load (average = {AVERAGE_LOAD:.2f} %)", session, 2, space=space)
+    plot("ram % usage", f"ram usage (max = {MAX_USED_RAM})", session, 3, space=space)
+    plot(f"{NAME_FS}", f"{NAME_FS} usage (max = {MAX_USED_FS})", session, 4, space=space)
 
     g("unset multiplot")
     g("unset output")
