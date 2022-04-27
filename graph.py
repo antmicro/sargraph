@@ -223,7 +223,7 @@ def graph(session, fname='plot.png'):
     nsdt = sdt - datetime.timedelta(seconds = (seconds_between * 0.01))
     nedt = edt + datetime.timedelta(seconds = (seconds_between * 0.01))
 
-    g(f"set terminal {OUTPUT_TYPE} size 1200,1200 background '#222222' font 'monospace,{fix_size(8)}'")
+    g(f"set terminal {OUTPUT_TYPE} size 1200,1200 background '#332d37' font 'monospace,{fix_size(8)}'")
 
     g(f"set ylabel tc rgb 'white' font 'monospace,{fix_size(8)}'")
 
@@ -237,9 +237,9 @@ def graph(session, fname='plot.png'):
     g("set xtics format '%H:%M:%S'")
     g(f"set xtics font 'monospace,{fix_size(8)}' tc rgb 'white'")
     g(f"set ytics font 'monospace,{fix_size(8)}' tc rgb 'white'")
-    g("set grid xtics ytics ls 12 lc rgb '#444444'")
+    g("set grid xtics ytics ls 12 lc rgb '#c4c2c5'")
     g("set style fill solid")
-    g("set palette defined ( 0.2 '#00ff00', 0.8 '#ff0000' )")
+    g("set palette defined ( 0.0 '#00af91', 0.25 '#00af91', 0.75 '#d83829', 1.0 '#d83829' )")
     g("set cbrange [0:100]")
     g("unset colorbox")
     g("unset key")
@@ -272,9 +272,16 @@ def graph(session, fname='plot.png'):
         if OUTPUT_EXT == "svg":
           length *= 0.75
 
-        g(f"set arrow nohead from '{label[0]}', graph 0.01 to '{label[0]}', graph {offset-0.04} front lc rgb 'red' dt 2")
-        g(f"set object rect at '{label[0]}', graph 0.0 size char 0.5, char 0.5 front fc rgb 'red'")
-        g(f"set object rect at '{label[0]}', graph {offset} size char {length}, char 1.3 fs border lc rgb 'red' fc rgb '#222222'")
+        # Draw the dotted line
+        g(f"set arrow nohead from '{label[0]}', graph 0.01 to '{label[0]}', graph {offset-0.04} front lc rgb '#e74a3c' dt 2")
+
+        # Draw the small rectangle at its bottom
+        g(f"set object rect at '{label[0]}', graph 0.0 size char 0.5, char 0.5 front lc rgb '#d83829' fc rgb '#f15f32'")
+
+        # Draw the label rectangle
+        g(f"set object rect at '{label[0]}', graph {offset} size char {length}, char 1.3 fs border lc rgb '#d83829' fc rgb '#f15f32'")
+
+        # Add text to the label
         g(f"set label at '{label[0]}', graph {offset} '{content}' center tc rgb 'white' font 'monospace,{fix_size(7)}'")
 
     if i <= 0:
