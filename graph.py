@@ -16,6 +16,7 @@ import numpy as np
 from typing import List, Tuple, Optional
 from contextlib import redirect_stdout
 from common import *
+from pathlib import Path
 
 global gnuplot
 
@@ -383,7 +384,7 @@ def create_ascii_plot(
 
 
 def render_ascii_plot(
-        outpath: str,
+        outpath: Path,
         summary: str,
         titles: List,
         xtitles: List,
@@ -402,9 +403,10 @@ def render_ascii_plot(
         axes_color='black',
         ticks_color='white'):
 
-    print(summary)
+    print(f'Saving to {outpath}')
     with open(outpath, 'w') as outfile:
         with redirect_stdout(outfile):
+            print(summary)
             for title, xtitle, xunit, ytitle, yunit, ydata in zip(titles, xtitles, xunits, ytitles, yunits, ydatas):  # noqa: E501
                 print('\n\n')
                 create_ascii_plot(
@@ -447,7 +449,7 @@ def ascii_graph(session, fname='plot.png'):
     summary += f"Duration: {START_DATE} .. {END_DATE} ({DURATION})"
 
     render_ascii_plot(
-        f'{fname}.txt',
+        f'{Path(fname).with_suffix(".plot.txt")}',
         summary,
         titles,
         ["time", "time", "time"],
