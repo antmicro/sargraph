@@ -14,6 +14,7 @@ import time
 import plotext
 import numpy as np
 from typing import List, Tuple, Optional
+from contextlib import redirect_stdout
 from common import *
 
 global gnuplot
@@ -382,6 +383,8 @@ def create_ascii_plot(
 
 
 def render_ascii_plot(
+        outpath: str,
+        summary: str,
         titles: List,
         xtitles: List,
         xunits: List,
@@ -399,25 +402,29 @@ def render_ascii_plot(
         axes_color='black',
         ticks_color='white'):
 
-    for title, xtitle, xunit, ytitle, yunit, ydata in zip(titles, xtitles, xunits, ytitles, yunits, ydatas):  # noqa: E501
-        create_ascii_plot(
-            title,
-            xtitle,
-            xunit,
-            ytitle,
-            yunit,
-            xdata,
-            ydata,
-            x_range=x_range,
-            y_range=y_range,
-            trimxvalues=trimxvalues,
-            skipfirst=skipfirst,
-            figsize=figsize,
-            switchtobarchart=switchtobarchart,
-            canvas_color=canvas_color,
-            axes_color=axes_color,
-            ticks_color=ticks_color
-        )
+    print(summary)
+    with open(outpath, 'w') as outfile:
+        with redirect_stdout(outfile):
+            for title, xtitle, xunit, ytitle, yunit, ydata in zip(titles, xtitles, xunits, ytitles, yunits, ydatas):  # noqa: E501
+                print('\n\n')
+                create_ascii_plot(
+                    title,
+                    xtitle,
+                    xunit,
+                    ytitle,
+                    yunit,
+                    xdata,
+                    ydata,
+                    x_range=x_range,
+                    y_range=y_range,
+                    trimxvalues=trimxvalues,
+                    skipfirst=skipfirst,
+                    figsize=figsize,
+                    switchtobarchart=switchtobarchart,
+                    canvas_color=canvas_color,
+                    axes_color=axes_color,
+                    ticks_color=ticks_color
+                )
 
 
 def ascii_graph(session, fname='plot.png'):
@@ -435,7 +442,13 @@ def ascii_graph(session, fname='plot.png'):
         tzinfo=datetime.timezone.utc).timestamp()*1000)/1000 
         for timestamp in xdata]
 
+    summary = f"Running on {UNAME}, {CPUS} threads x {CPU_NAME}\n"
+    summary += f"Total ram: {TOTAL_RAM}, Total disk space: {TOTAL_FS}\n"
+    summary += f"Duration: {START_DATE} .. {END_DATE} ({DURATION})"
+
     render_ascii_plot(
+        f'{fname}.txt',
+        summary,
         titles,
         ["time", "time", "time"],
         [None, None, None],

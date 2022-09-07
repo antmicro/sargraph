@@ -25,7 +25,7 @@ simple_test:
     - sargraph chart stop
 
     - cd ..
-    - cat chart.log
+    - cat plot.txt
     - test -f plot.svg
   artifacts:
     when: always
