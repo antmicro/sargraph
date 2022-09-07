@@ -363,6 +363,7 @@ def create_ascii_plot(
     else:
         plotext.scatter(xdata, ydata)
     if figsize is not None:
+        plotext.limit_size(False)
         plotext.plot_size(figsize[0], figsize[1])
 
     if x_range is not None:
