@@ -347,6 +347,8 @@ def create_ascii_plot(
     xdata = np.array(xdata[start:], copy=True)
     ydata = np.array(ydata[start:], copy=True)
 
+    xdata = [datetime.datetime.fromtimestamp(x).strftime('%H:%M:%S') for x in xdata]
+
     if trimxvalues:
         minx = min(xdata)
         xdata = [x - minx for x in xdata]
@@ -371,8 +373,8 @@ def create_ascii_plot(
     if y_range is not None:
         plotext.ylim(y_range[0], y_range[1])
     plotext.title(title)
-    plotext.xlabel(xtitle)
-    plotext.ylabel(ytitle)
+    plotext.xlabel(xlabel)
+    plotext.ylabel(ylabel)
     plotext.canvas_color(canvas_color)
     plotext.axes_color(axes_color)
     plotext.ticks_color(ticks_color)
@@ -435,15 +437,15 @@ def ascii_graph(session, fname='plot.png'):
 
     render_ascii_plot(
         titles,
-        ["time"]*3,
-        ["s"]*3,
+        ["time", "time", "time"],
+        [None, None, None],
         y_titles,
         [None, None, None],
         xdata_to_int,
         ydata,
         x_range=(0, 160),
         y_range=(0, 100),
-        trimxvalues=True,
+        trimxvalues=False,
         skipfirst=False,
         switchtobarchart=True,
         figsize=(90, 70)
