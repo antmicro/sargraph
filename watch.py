@@ -174,8 +174,10 @@ def watch(session, fsdev):
                         pass
                     elif label_line:
                         graph.graph(session, label_line)
+                        graph.ascii_graph(session, label_line)
                     elif not dont_plot:
                         graph.graph(session)
+                        graph.ascii_graph(session)
                     dont_plot = True
                     die = 1
                     break
@@ -188,8 +190,10 @@ def watch(session, fsdev):
                         summarize(session)
                     if not label_line:
                         graph.graph(session)
+                        graph.ascii_graph(session)
                     else:
                         graph.graph(session, label_line)
+                        graph.ascii_graph(session, label_line)
             elif label_line.startswith('label:'):
                 label_line = label_line[len('label:'):]
                 with open(f"{session}.txt", "a") as f:

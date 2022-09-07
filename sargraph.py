@@ -106,7 +106,9 @@ elif cmd[0] == 'save':
 elif cmd[0] == 'plot':
     if len(cmd) < 2:
         graph.graph(sid)
+        graph.ascii_graph(sid)
     else:
         graph.graph(sid, cmd[1])
+        graph.ascii_graph(sid, cmd[1])
 else:
     fail(f"unknown command '{cmd[0]}'")
