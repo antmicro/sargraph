@@ -445,5 +445,5 @@ def ascii_graph(session, fname='plot.png'):
         trimxvalues=True,
         skipfirst=False,
         switchtobarchart=True,
-        figsize=(80, 50)
+        figsize=(90, 70)
     )
