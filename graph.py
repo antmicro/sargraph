@@ -407,8 +407,8 @@ def render_ascii_plot(
     with open(outpath, 'w') as outfile:
         with redirect_stdout(outfile):
             print(summary)
+            print('\n\n')
             for title, xtitle, xunit, ytitle, yunit, ydata in zip(titles, xtitles, xunits, ytitles, yunits, ydatas):  # noqa: E501
-                print('\n\n')
                 create_ascii_plot(
                     title,
                     xtitle,
@@ -427,6 +427,7 @@ def render_ascii_plot(
                     axes_color=axes_color,
                     ticks_color=ticks_color
                 )
+                print('\n\n')
 
 
 def ascii_graph(session, fname='plot.png'):
