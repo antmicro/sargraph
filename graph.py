@@ -10,11 +10,9 @@ import datetime
 import os
 import socket
 import subprocess
-import sys
 import time
-import plotext as plt
+import plotext
 import numpy as np
-from pathlib import Path
 from typing import List, Tuple, Optional
 from common import *
 
@@ -334,14 +332,17 @@ def create_ascii_plot(
         yunit: str,
         xdata: List,
         ydata: List,
-        xrange: Optional[Tuple] = (0, 10),
-        yrange: Optional[Tuple] = (0, 100),
+        x_range: Optional[Tuple] = (0, 10),
+        y_range: Optional[Tuple] = (0, 100),
         trimxvalues: bool = True,
         skipfirst: bool = False,
-        figsize: Tuple = (90, 30),
-        switchtobarchart: bool = False):
+        figsize: Optional[Tuple] = None,
+        switchtobarchart: bool = False,
+        canvas_color='black',
+        axes_color='black',
+        ticks_color='white'):
 
-    plt.clear_figure()
+    plotext.clear_figure()
     start = 1 if skipfirst else 0
     xdata = np.array(xdata[start:], copy=True)
     ydata = np.array(ydata[start:], copy=True)
@@ -358,120 +359,67 @@ def create_ascii_plot(
         ylabel += f' [{yunit}]'
 
     if switchtobarchart == True:
-        plt.bar(xdata, ydata, width=0.1)
+        plotext.bar(xdata, ydata, width=0.1)
     else:
-        plt.scatter(xdata, ydata)
-    plt.plot_size(figsize[0], figsize[1])
+        plotext.scatter(xdata, ydata)
+    if figsize is not None:
+        plotext.plot_size(figsize[0], figsize[1])
 
-    if xrange is not None:
-        plt.xlim(xrange[0], xrange[1])
-    if yrange is not None:
-        plt.ylim(yrange[0], yrange[1])
-    plt.title(title)
-    plt.xlabel(xtitle)
-    plt.ylabel(ytitle)
-    plt.show()
+    if x_range is not None:
+        plotext.xlim(x_range[0], x_range[1])
+    if y_range is not None:
+        plotext.ylim(y_range[0], y_range[1])
+    plotext.title(title)
+    plotext.xlabel(xtitle)
+    plotext.ylabel(ytitle)
+    plotext.canvas_color(canvas_color)
+    plotext.axes_color(axes_color)
+    plotext.ticks_color(ticks_color)
+    plotext.show()
+
 
 def render_ascii_plot(
-        outpath: Optional[Path],
-        title: str,
-        subtitles: List,
+        titles: List,
         xtitles: List,
         xunits: List,
         ytitles: List,
         yunits: List,
         xdata: List,
-        ydata: List,
-        xrange: Optional[Tuple] = None,
-        yrange: Optional[Tuple] = None,
+        ydatas: List,
+        x_range: Optional[Tuple] = None,
+        y_range: Optional[Tuple] = None,
         trimxvalues: bool = True,
         skipfirst: bool = False,
-        figsize: Tuple = (1500, 1080),
-        bins: int = 20,
+        figsize: Optional[Tuple] = None,
         switchtobarchart: bool = True,
-        tags: List = [],
-        tagstype: str = "single",
-        outputext: str = "html"):
-    """
-    Draws triple time series plot.
+        canvas_color='black',
+        axes_color='black',
+        ticks_color='white'):
 
-    Used i.e. for timeline of resource usage.
-
-    It also draws the histograms of values that appeared throughout the
-    experiment.
-
-    Parameters
-    ----------
-    outpath : Optional[Path]
-        Output path for the plot image. If None, the plot will be displayed.
-    title : str
-        Title of the plot
-    xtitle : str
-        Name of the X axis
-    xuint : str
-        Unit for the X axis
-    ytitle : str
-        Name of the Y axis
-    yunit : str
-        Unit for the Y axis
-    xdata : List
-        The values for X dimension
-    ydata : List
-        The values for Y dimension
-    xrange : Optional[Tuple]
-        The range of zoom on X axis 
-    yrange : Optional[Tuple]
-        The range of zoom on Y axis
-    trimxvalues : bool
-        True if all values for the X dimension should be subtracted by
-        the minimal value on this dimension
-    skipfirst: bool
-        True if the first entry should be removed from plotting.
-    figsize: Tuple
-        The size of the figure
-    bins: int
-        Number of bins for value histograms
-    tags: list
-        List of tags and their timestamps
-    tagstype: String
-        "single" if given list contain tags with only one timestamp
-        "double" if given list contain tags with two (start and end) 
-        timestamps.
-    outputext: String
-        Extension of generated file.
-        "html" for HTML file,
-        "png" for PNG file,
-        "svg" for SVG file,
-        "txt" for TXT file
-    """
-    if outputext == "txt":
-        for plot_id in range(3):
-            create_ascii_plot(
-                title,
-                xtitles[plot_id],
-                xunits[plot_id],
-                ytitles[plot_id],
-                yunits[plot_id],
-                xdata,
-                ydata[plot_id],
-                xrange=xrange,
-                yrange=yrange,
-                trimxvalues=trimxvalues,
-                skipfirst=skipfirst,
-                switchtobarchart=switchtobarchart
-            )
-        return
+    for title, xtitle, xunit, ytitle, yunit, ydata in zip(titles, xtitles, xunits, ytitles, yunits, ydatas):  # noqa: E501
+        create_ascii_plot(
+            title,
+            xtitle,
+            xunit,
+            ytitle,
+            yunit,
+            xdata,
+            ydata,
+            x_range=x_range,
+            y_range=y_range,
+            trimxvalues=trimxvalues,
+            skipfirst=skipfirst,
+            figsize=figsize,
+            switchtobarchart=switchtobarchart,
+            canvas_color=canvas_color,
+            axes_color=axes_color,
+            ticks_color=ticks_color
+        )
 
 
 def ascii_graph(session, fname='plot.png'):
-    plot_title = f"""Running on <b>{UNAME}</b>, 
-        <b>{CPUS}</b> threads x <b>{CPU_NAME}</b><br>
-        Total ram: <b>{TOTAL_RAM}</b>,
-        Total disk space: <b> {TOTAL_FS}</b><br>
-        Duration: <b>{START_DATE}</b> .. <b>{END_DATE}</b> ({DURATION})"""
-
     data = read_data(session)
-    subtitles = [f"""cpu load (average = {AVERAGE_LOAD} %)""",
+    titles = [f"""cpu load (average = {AVERAGE_LOAD} %)""",
                  f"""ram usage (max = {MAX_USED_RAM})""",
                  f"""{NAME_FS} usage (max = {MAX_USED_FS})"""]
 
@@ -485,19 +433,17 @@ def ascii_graph(session, fname='plot.png'):
         for timestamp in xdata]
 
     render_ascii_plot(
-        fname,
-        plot_title,
-        subtitles,
+        titles,
         ["time"]*3,
         ["s"]*3,
         y_titles,
         [None, None, None],
         xdata_to_int,
         ydata,
-        xrange=(0, 160),
-        yrange=(0, 100),
+        x_range=(0, 160),
+        y_range=(0, 100),
         trimxvalues=True,
-        skipfirst=True,
+        skipfirst=False,
         switchtobarchart=True,
-        outputext="txt"
+        figsize=(80, 50)
     )
