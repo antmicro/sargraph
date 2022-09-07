@@ -2,7 +2,8 @@ image: debian:bullseye
 
 before_script:
   - apt -qqy update > /dev/null
-  - apt -qqy install --no-install-recommends screen sysstat gnuplot-nox python3 stress coreutils > /dev/null
+  - apt -qqy install --no-install-recommends screen sysstat gnuplot-nox python3 python3-pip stress coreutils > /dev/null
+  - pip install plotext
   - ln -s $(realpath sargraph.py) /usr/bin/sargraph
 
 simple_test:
