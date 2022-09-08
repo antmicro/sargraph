@@ -25,6 +25,8 @@ simple_test:
     - sargraph chart stop
 
     - cd ..
+    - cat chart.log
+    - echo '------Sample plot------'
     - cat plot.plot.txt
     - test -f plot.svg
   artifacts:
