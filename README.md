@@ -6,7 +6,7 @@ This is a simple python tool that uses "sysstat" ("sar") to save information on 
 The process runs in background and can be controlled with a set of sargraph sub-commands.
 
 The tool can use "gnuplot" to optionally plot the data it collected.
-Supported plot formats are PNG and SVG, they are determined by filenames.
+Supported plot formats are PNG, SVG and ASCII, they are determined by filename extensions.
 
 
 # Example graph
@@ -45,7 +45,7 @@ $ ./sargraph.py example save plot.svg
 ## Plotting a closed session
 Plot data collected in a session that is not running anymore.
 ```
-$ ./sargraph.py example plot plot.png
+$ ./sargraph.py example plot plot.ascii
 ```
 The command requires the `example.txt` log file to be present in the working directory.
 
