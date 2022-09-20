@@ -10,7 +10,6 @@ simple_test:
   variables:
     FAKE_DISK: "fake_disk.ext4"
     FAKE_MOUNTPOINT: "fake_mountpoint"
-    SARGRAPH_OUTPUT_TYPE: "svg"
   script:
     - dd if=/dev/zero of=$FAKE_DISK bs=1M count=130
     - mkfs.ext4 $FAKE_DISK
@@ -18,20 +17,29 @@ simple_test:
 
     - sargraph chart start -m $FAKE_MOUNTPOINT
 
-    - cd $FAKE_MOUNTPOINT
+    - pushd $FAKE_MOUNTPOINT
     - df -h .
     - stress -c 16 -i 1 -m 1 --vm-bytes 512M -d 1 --hdd-bytes 70M -t 160s
 
+    - popd
+
+    - sargraph chart save plot.svg
+    - sargraph chart save plot.png
+    - sargraph chart save plot.ascii
     - sargraph chart stop
 
-    - cd ..
+    - test -f plot.svg
+    - test -f plog.png
+    - test -f plot.ascii
+
     - cat chart.log
     - echo '------Sample plot------'
-    - cat plot.plot.txt
-    - test -f plot.svg
+    - cat plot.ascii
   artifacts:
     when: always
     paths:
       - "*.svg"
+      - "*.png"
+      - "*.ascii"
       - "*.txt"
       - "*.log"
