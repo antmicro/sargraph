@@ -184,7 +184,7 @@ def read_comments(session):
     DURATION = unit_str(DURATION, TIME_UNITS, 60)
 
 
-def graph(session, fname='plot.png'):
+def graph(session, fname='plot'):
     global OUTPUT_TYPE
     global OUTPUT_EXT
 
@@ -440,7 +440,7 @@ def render_ascii_plot(
                 print('\n\n')
 
 
-def ascii_graph(session, fname='plot.ascii'):
+def ascii_graph(session, fname='plot'):
     data = read_data(session)
     titles = [f"""cpu load (average = {AVERAGE_LOAD} %)""",
                  f"""ram usage (max = {MAX_USED_RAM})""",
