@@ -29,7 +29,7 @@ simple_test:
     - sargraph chart stop
 
     - test -f plot.svg
-    - test -f plog.png
+    - test -f plot.png
     - test -f plot.ascii
 
     - cat chart.log

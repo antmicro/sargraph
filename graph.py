@@ -198,21 +198,31 @@ def graph(session, fname='plot.png'):
     OUTPUT_TYPE = "pngcairo"
     OUTPUT_EXT = "png"
     if "SARGRAPH_OUTPUT_TYPE" in os.environ:
-        if os.environ["SARGRAPH_OUTPUT_TYPE"] == "svg":
-            OUTPUT_TYPE = "svg"
-            OUTPUT_EXT = "svg"
+        otype = os.environ["SARGRAPH_OUTPUT_TYPE"].lower()
+
+        # png is the default, so don't change anything
+        if otype != "png":
+            OUTPUT_TYPE = otype
+            OUTPUT_EXT = otype
+    elif fname.lower().endswith('.png'):
+        # png is the default, so don't change anything
+        pass
     elif fname.lower().endswith('.svg'):
         OUTPUT_TYPE = "svg"
         OUTPUT_EXT = "svg"
-    elif fname.lower().endswith('.png'):
-        # Otherwise leave the default png
-        pass
+    elif fname.lower().endswith('.ascii'):
+        OUTPUT_TYPE = "ascii"
+        OUTPUT_EXT = "ascii"
     else:
         pass
         # fail("unknown graph extension")
 
     # Leave just the base name
-    fname = fname[:-4]
+    fname = cut_suffix(fname, f".{OUTPUT_EXT}")
+
+    # ASCII plots have their own routine
+    if OUTPUT_TYPE == "ascii":
+        return ascii_graph(session, fname)
 
     read_comments(session)
 
@@ -430,7 +440,7 @@ def render_ascii_plot(
                 print('\n\n')
 
 
-def ascii_graph(session, fname='plot.png'):
+def ascii_graph(session, fname='plot.ascii'):
     data = read_data(session)
     titles = [f"""cpu load (average = {AVERAGE_LOAD} %)""",
                  f"""ram usage (max = {MAX_USED_RAM})""",
@@ -450,7 +460,7 @@ def ascii_graph(session, fname='plot.png'):
     summary += f"Duration: {START_DATE} .. {END_DATE} ({DURATION})"
 
     render_ascii_plot(
-        f'{Path(fname).with_suffix(".plot.txt")}',
+        Path(fname).with_suffix(".ascii"),
         summary,
         titles,
         ["time", "time", "time"],

@@ -46,6 +46,13 @@ def stof(s):
     return float(s.replace(',', '.'))
 
 
+# Return a string without given suffix or unchange if it doesn't have it
+def cut_suffix(s, sfx):
+    if s.endswith(sfx):
+        s = s[:-len(sfx)]
+    return s
+
+
 # Scale a value until it has a convenient size and unit, round the value
 # and return a string representation with the new value and its unit
 def unit_str(value, units, step=1024):
