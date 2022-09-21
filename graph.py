@@ -351,7 +351,11 @@ def create_ascii_plot(
         canvas_color='black',
         axes_color='black',
         ticks_color='white'):
-    import plotext
+    try:
+        import plotext
+    except ImportError:
+        print('Could not import plotext - please install the module')
+        return
     plotext.clear_figure()
     start = 1 if skipfirst else 0
     xdata = xdata[start:]
