@@ -11,8 +11,6 @@ import os
 import socket
 import subprocess
 import time
-import plotext
-import numpy as np
 from typing import List, Tuple, Optional
 from contextlib import redirect_stdout
 from common import *
@@ -353,11 +351,11 @@ def create_ascii_plot(
         canvas_color='black',
         axes_color='black',
         ticks_color='white'):
-
+    import plotext
     plotext.clear_figure()
     start = 1 if skipfirst else 0
-    xdata = np.array(xdata[start:], copy=True)
-    ydata = np.array(ydata[start:], copy=True)
+    xdata = xdata[start:]
+    ydata = ydata[start:]
 
     xdata = [datetime.datetime.fromtimestamp(x).strftime('%H:%M:%S') for x in xdata]
 
