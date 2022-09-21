@@ -49,6 +49,14 @@ $ ./sargraph.py example plot plot.ascii
 ```
 The command requires the `example.txt` log file to be present in the working directory.
 
+## Supported formats
+
+Plots can be saved in:
+
+* `png` format
+* `svg` format
+* `ascii` format - plot is rendered to text file that can be displayed in terminal
+
 ## Stopping a session
 Stop a session and create a final `plot.png` plot file if no other plot was created so far:
 ```
