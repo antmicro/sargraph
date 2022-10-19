@@ -275,7 +275,6 @@ def graph(session, fname='plot'):
     g("set grid xtics ytics ls 12 lc rgb '#c4c2c5'")
     g("set style fill solid")
     g("set palette defined ( 0.0 '#00af91', 0.25 '#00af91', 0.75 '#d83829', 1.0 '#d83829' )")
-    g("set cbrange [0:100]")
     g("unset colorbox")
     g("unset key")
     g("set rmargin 6")
@@ -324,11 +323,13 @@ def graph(session, fname='plot'):
         space = 2
     else:
         space = 3
-    g("set yrange [0:100]")
 
     g("set object rectangle from graph 0, graph 0 to graph 2, graph 2 behind fillcolor rgb '#000000' fillstyle solid noborder")
     #g(f"set object rectangle from '{START_DATE.replace(' ', '-')}', 0 to '{END_DATE.replace(' ', '-')}', 100 behind fillcolor rgb '#000000' fillstyle solid noborder")
 
+    # Set scale for plots displayed in relative units (%)
+    g("set yrange [0:100]")
+    g("set cbrange [0:100]")
     plot("CPU load (%)",
          f"CPU load (average = {AVERAGE_LOAD:.2f} %)", session, 2, space=space)
     plot(f"RAM usage (100% = {TOTAL_RAM})",
@@ -336,7 +337,10 @@ def graph(session, fname='plot'):
     plot(f"FS usage (100% = {TOTAL_FS})", f"{NAME_FS} usage (max = {MAX_USED_FS})",
          session, 4, space=space)
 
-    g("set yrange [:*]")
+
+    # Set scale for plots displayed in absolute units
+    g("set yrange [0:*]")
+    g("set cbrange [0:*]")
     plot(f"{NAME_IFACE} received (B/s)", f"{NAME_IFACE} data received (max = {MAX_RX}/s)",
          session, 5, space=space)
     plot(f"{NAME_IFACE} sent (B/s)", f"{NAME_IFACE} data sent (max = {MAX_TX}/s)",
