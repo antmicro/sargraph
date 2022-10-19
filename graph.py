@@ -326,8 +326,8 @@ def graph(session, fname='plot'):
         space = 3
     g("set yrange [0:100]")
 
-    g("set object rectangle from graph 0, graph 0 to graph 2, graph 2 behind fillcolor rgb '#111111' fillstyle solid noborder")
-    g(f"set object rectangle from '{START_DATE.replace(' ', '-')}', 0 to '{END_DATE.replace(' ', '-')}', 100 behind fillcolor rgb '#000000' fillstyle solid noborder")
+    g("set object rectangle from graph 0, graph 0 to graph 2, graph 2 behind fillcolor rgb '#000000' fillstyle solid noborder")
+    #g(f"set object rectangle from '{START_DATE.replace(' ', '-')}', 0 to '{END_DATE.replace(' ', '-')}', 100 behind fillcolor rgb '#000000' fillstyle solid noborder")
 
     plot("cpu % load (user)",
          f"cpu load (average = {AVERAGE_LOAD:.2f} %)", session, 2, space=space)
@@ -335,6 +335,8 @@ def graph(session, fname='plot'):
          f"ram usage (max = {MAX_USED_RAM})", session, 3, space=space)
     plot(f"{NAME_FS}", f"{NAME_FS} usage (max = {MAX_USED_FS})",
          session, 4, space=space)
+
+    g("set yrange [:*]")
     plot(f"{NAME_IFACE} received", f"{NAME_IFACE} data received (max = {MAX_RX})",
          session, 5, space=space)
     plot(f"{NAME_IFACE} sent", f"{NAME_IFACE} data sent (max = {MAX_TX})",
