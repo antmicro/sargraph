@@ -25,9 +25,12 @@ END_DATE = ""
 AVERAGE_LOAD = 0.0
 MAX_USED_RAM = 0
 MAX_USED_FS = 0
+MAX_TX = 0
+MAX_RX = 0
 TOTAL_RAM = 0
 TOTAL_FS = 0
 NAME_FS = "unknown"
+NAME_IFACE = "unknown"
 
 UNAME = "unknown"
 CPUS = 0
@@ -37,7 +40,7 @@ DURATION = 0.0
 HOST = socket.gethostname()
 
 # The number of plots on the graph
-NUMBER_OF_PLOTS = 3
+NUMBER_OF_PLOTS = 5
 
 # The default format
 OUTPUT_TYPE = "pngcairo"
@@ -102,6 +105,9 @@ def read_comments(session):
     global CPUS
     global CPU_NAME
     global DURATION
+    global MAX_RX
+    global MAX_TX
+    global NAME_IFACE
 
     data_version = None
 
@@ -157,6 +163,18 @@ def read_comments(session):
             if value is not None:
                 TOTAL_FS = value
 
+            value = scan("observed network: (\S+)", str, line)
+            if value is not None:
+                NAME_IFACE = value
+
+            value = scan("max data received: (\S+)", stof, line)
+            if value is not None:
+                MAX_RX = value
+
+            value = scan("max data sent: (\S+)", stof, line)
+            if value is not None:
+                MAX_TX = value
+
             value = scan("duration: (\S+)", stof, line)
             if value is not None:
                 DURATION = value
@@ -178,6 +196,9 @@ def read_comments(session):
 
     TOTAL_FS = unit_str(TOTAL_FS, DATA_UNITS)
     MAX_USED_FS = unit_str(MAX_USED_FS, DATA_UNITS)
+
+    MAX_RX = unit_str(MAX_RX, DATA_UNITS)
+    MAX_TX = unit_str(MAX_TX, DATA_UNITS)
 
     DURATION = unit_str(DURATION, TIME_UNITS, 60)
 
@@ -237,7 +258,7 @@ def graph(session, fname='plot'):
     nsdt = sdt - datetime.timedelta(seconds=(seconds_between * 0.01))
     nedt = edt + datetime.timedelta(seconds=(seconds_between * 0.01))
 
-    g(f"set terminal {OUTPUT_TYPE} size 1200,1200 background '#332d37' font 'monospace,{fix_size(8)}'")
+    g(f"set terminal {OUTPUT_TYPE} size 1600,1600 background '#332d37' font 'monospace,{fix_size(8)}'")
 
     g(f"set ylabel tc rgb 'white' font 'monospace,{fix_size(8)}'")
 
@@ -314,6 +335,10 @@ def graph(session, fname='plot'):
          f"ram usage (max = {MAX_USED_RAM})", session, 3, space=space)
     plot(f"{NAME_FS}", f"{NAME_FS} usage (max = {MAX_USED_FS})",
          session, 4, space=space)
+    plot(f"{NAME_IFACE} received", f"{NAME_IFACE} data received (max = {MAX_RX})",
+         session, 5, space=space)
+    plot(f"{NAME_IFACE} sent", f"{NAME_IFACE} data sent (max = {MAX_TX})",
+         session, 6, space=space)
 
     g("unset multiplot")
     g("unset output")
@@ -322,15 +347,15 @@ def graph(session, fname='plot'):
 
 def read_data(session):
     xdata = list()
-    ydata = [[], [], []]
+    ydata = [[], [], [], [], []]
     with open(f"{session}.txt", "r") as f:
         for line in f:
             if(line[0] != '#'):
                 line = line.split(" ")
                 date = datetime.datetime.strptime(line[0], '%Y-%m-%d-%H:%M:%S')
                 xdata.append(date)
-                for i in range(3):
-                    ydata[i].append(float(line[i+1]))
+                for i in range(NUMBER_OF_PLOTS):
+                    ydata[i].append(stof(line[i+1]))
     return (xdata, ydata)
 
 
@@ -354,8 +379,7 @@ def create_ascii_plot(
     try:
         import plotext
     except ImportError:
-        print('Could not import plotext - please install the module')
-        return
+        fail('could not import plotext - please install the module')
     plotext.clear_figure()
     start = 1 if skipfirst else 0
     xdata = xdata[start:]
@@ -446,11 +470,15 @@ def ascii_graph(session, fname='plot'):
     data = read_data(session)
     titles = [f"""cpu load (average = {AVERAGE_LOAD} %)""",
                  f"""ram usage (max = {MAX_USED_RAM})""",
-                 f"""{NAME_FS} usage (max = {MAX_USED_FS})"""]
+                 f"""{NAME_FS} usage (max = {MAX_USED_FS})""",
+                 f"""{NAME_IFACE} data received (max = {MAX_RX})""",
+                 f"""{NAME_IFACE} data sent (max = {MAX_TX})"""]
 
     y_titles = [f"cpu % load (user)",
                 f"ram % usage",
-                f"{NAME_FS}"]
+                f"{NAME_FS}",
+                f"{NAME_IFACE} received",
+                f"{NAME_IFACE} sent"]
 
     xdata, ydata = data
     xdata_to_int = [int(timestamp.replace(
@@ -465,10 +493,10 @@ def ascii_graph(session, fname='plot'):
         Path(fname).with_suffix(".ascii"),
         summary,
         titles,
-        ["time", "time", "time"],
-        [None, None, None],
+        ["time", "time", "time", "time", "time"],
+        [None, None, None, None, None],
         y_titles,
-        [None, None, None],
+        [None, None, None, None, None],
         xdata_to_int,
         ydata,
         x_range=(0, 160),

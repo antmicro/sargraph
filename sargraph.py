@@ -20,6 +20,7 @@ parser.add_argument('session', metavar='SESSION-NAME', type=str, nargs='?', defa
 parser.add_argument('command', metavar='COMMAND',      type=str, nargs='*',                                help='send command')
 parser.add_argument('-f',      metavar='DEVICE-NAME',  type=str, nargs='?', default=None,   dest='fsdev',  help='observe a chosen filesystem')
 parser.add_argument('-m',      metavar='MOUNT-DIR',    type=str, nargs='?', default=None,   dest='fspath', help='observe a chosen filesystem')
+parser.add_argument('-n',      metavar='IFACE-NAME',   type=str, nargs='?', default=None,   dest='iface',  help='observe chosen network iface')
 parser.add_argument('-o',      metavar='OUTPUT-NAME',  type=str, nargs='?', default='data', dest='name',   help='set output base names')
 args = parser.parse_args()
 
@@ -48,7 +49,7 @@ if args.session is None:
         if not args.fsdev:
             fail(f"no device is mounted on {args.fspath}")
 
-    watch.watch(args.name, args.fsdev)
+    watch.watch(args.name, args.fsdev, args.iface)
     sys.exit(0)
 
 # Now handle the commands
@@ -64,8 +65,10 @@ cmd = args.command
 if cmd[0] == "start":
     print(f"Starting sargraph session '{sid}'")
 
-    # Spawn watcher process, *sys.argv[3:] is all arguments after 'chart start'
-    p = subprocess.Popen(["screen", "-Logfile", f"{sid}.log", "-dmSL", sid, os.path.realpath(__file__), *sys.argv[3:], '-o', sid])
+    # Spawn watcher process, *sys.argv[3:] is all arguments after 'chart start' + '-o [log name]' if not given
+    if "-o" not in sys.argv:
+        sys.argv += ["-o", sid]
+    p = subprocess.Popen(["screen", "-Logfile", f"{sid}.log", "-dmSL", sid, os.path.realpath(__file__), *sys.argv[3:]])
 
     while p.poll() is None:
         time.sleep(0.1)

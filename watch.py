@@ -31,10 +31,15 @@ END_DATE = ""
 TOTAL_LOAD = 0.0
 MAX_USED_RAM = 0
 MAX_USED_FS = 0
+MAX_TX = 0
+MAX_RX = 0
 TOTAL_FS = 0
+
 FS_NAME = None
 FS_SAR_INDEX = None
 
+IFACE_NAME = None
+IFACE_SAR_INDEX = None
 
 # Handle SIGTERM
 def kill_handler(a, b):
@@ -109,6 +114,8 @@ def summarize(session):
     total_ram = TOTAL_RAM * 1024.0
     max_used_fs = MAX_USED_FS * 1024.0 * 1024.0
     total_fs = TOTAL_FS * 1024 * 1024
+    max_tx = MAX_TX * 1024
+    max_rx = MAX_RX * 1024
 
     sdt = datetime.datetime.strptime(START_DATE, '%Y-%m-%d %H:%M:%S')
     edt = datetime.datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
@@ -121,22 +128,31 @@ def summarize(session):
               f"max disk used: {max_used_fs:.2f} B",
               f"average load: {average_load:.2f} %",
               f"observed disk: {FS_NAME}",
+              f"max data received: {max_rx:.2f} B",
+              f"max data sent: {max_tx:.2f} B",
+              f"observed network: {IFACE_NAME}",
               f"duration: {delta_t} seconds",
               sep=", ", file=f)
 
 
 # Run sar and gather data from it
-def watch(session, fsdev):
+def watch(session, fsdev, iface):
     global SAMPLE_NUMBER
     global START_DATE
     global END_DATE
     global TOTAL_LOAD
     global MAX_USED_RAM
     global MAX_USED_FS
+    global MAX_TX
+    global MAX_RX
     global TOTAL_FS
+    global TOTAL_RX
+    global TOTAL_TX
     global FS_SAR_INDEX
     global TOTAL_RAM
     global FS_NAME
+    global IFACE_NAME
+    global IFACE_SAR_INDEX
 
     global die
 
@@ -145,7 +161,7 @@ def watch(session, fsdev):
 
     my_env = os.environ
     my_env["S_TIME_FORMAT"] = "ISO"
-    p = run_or_fail("sar", "-F", "-u", "-r", "1", stdout=subprocess.PIPE, env=my_env)
+    p = run_or_fail("sar", "-F", "-u", "-r", "-n", "DEV", "1", stdout=subprocess.PIPE, env=my_env)
 
     machine = p.stdout.readline().decode()
     initialize(session, machine)
@@ -215,6 +231,26 @@ def watch(session, fsdev):
         if MAX_USED_RAM < int(ram_data['kbmemused'][0]):
             MAX_USED_RAM = int(ram_data['kbmemused'][0])
 
+        # Read and process network data
+        net_data = read_table(p.stdout)
+        print(net_data)
+        if IFACE_SAR_INDEX is None:
+            if iface:
+                IFACE_SAR_INDEX = net_data['IFACE'].index(iface)
+            else:
+                maxj, maxv = 0, 0
+                for j, used in enumerate(net_data['IFACE']):
+                    v = stof(net_data['rxkB/s'][j])
+                    if maxv < v:
+                        maxj, maxv = j, v
+                    IFACE_SAR_INDEX = maxj
+        if IFACE_NAME is None:
+            IFACE_NAME = net_data['IFACE'][IFACE_SAR_INDEX]
+        if MAX_RX < stof(net_data['rxkB/s'][IFACE_SAR_INDEX]):
+            MAX_RX = stof(net_data['rxkB/s'][IFACE_SAR_INDEX])
+        if MAX_TX < stof(net_data['txkB/s'][IFACE_SAR_INDEX]):
+            MAX_TX = stof(net_data['txkB/s'][IFACE_SAR_INDEX])
+
         # Read and process FS data
         fs_data = read_table(p.stdout)
         if FS_SAR_INDEX is None:
@@ -242,6 +278,8 @@ def watch(session, fsdev):
                   cpu_data['%user'][0],
                   ram_data['%memused'][0],
                   fs_data['%fsused'][FS_SAR_INDEX],
+                  net_data['rxkB/s'][IFACE_SAR_INDEX],
+                  net_data['txkB/s'][IFACE_SAR_INDEX],
                   file=f)
 
         if die:
