@@ -151,6 +151,10 @@ def read_comments(session):
             if value is not None:
                 NAME_FS = value
 
+            value = scan("observed network: ([^,]+)", str, line)
+            if value is not None:
+                NAME_IFACE = value
+
             value = scan("total ram: (\S+)", stof, line)
             if value is not None:
                 TOTAL_RAM = value
@@ -162,10 +166,6 @@ def read_comments(session):
             value = scan("total disk space: (\S+)", stof, line)
             if value is not None:
                 TOTAL_FS = value
-
-            value = scan("observed network: (\S+)", str, line)
-            if value is not None:
-                NAME_IFACE = value
 
             value = scan("max data received: (\S+)", stof, line)
             if value is not None:
@@ -329,17 +329,17 @@ def graph(session, fname='plot'):
     g("set object rectangle from graph 0, graph 0 to graph 2, graph 2 behind fillcolor rgb '#000000' fillstyle solid noborder")
     #g(f"set object rectangle from '{START_DATE.replace(' ', '-')}', 0 to '{END_DATE.replace(' ', '-')}', 100 behind fillcolor rgb '#000000' fillstyle solid noborder")
 
-    plot("cpu % load (user)",
-         f"cpu load (average = {AVERAGE_LOAD:.2f} %)", session, 2, space=space)
-    plot("ram % usage",
-         f"ram usage (max = {MAX_USED_RAM})", session, 3, space=space)
-    plot(f"{NAME_FS}", f"{NAME_FS} usage (max = {MAX_USED_FS})",
+    plot("CPU load (%)",
+         f"CPU load (average = {AVERAGE_LOAD:.2f} %)", session, 2, space=space)
+    plot(f"RAM usage (100% = {TOTAL_RAM})",
+         f"RAM usage (max = {MAX_USED_RAM})", session, 3, space=space)
+    plot(f"FS usage (100% = {TOTAL_FS})", f"{NAME_FS} usage (max = {MAX_USED_FS})",
          session, 4, space=space)
 
     g("set yrange [:*]")
-    plot(f"{NAME_IFACE} received", f"{NAME_IFACE} data received (max = {MAX_RX})",
+    plot(f"{NAME_IFACE} received (B/s)", f"{NAME_IFACE} data received (max = {MAX_RX}/s)",
          session, 5, space=space)
-    plot(f"{NAME_IFACE} sent", f"{NAME_IFACE} data sent (max = {MAX_TX})",
+    plot(f"{NAME_IFACE} sent (B/s)", f"{NAME_IFACE} data sent (max = {MAX_TX}/s)",
          session, 6, space=space)
 
     g("unset multiplot")
