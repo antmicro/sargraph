@@ -258,7 +258,7 @@ def graph(session, fname='plot'):
     nsdt = sdt - datetime.timedelta(seconds=(seconds_between * 0.01))
     nedt = edt + datetime.timedelta(seconds=(seconds_between * 0.01))
 
-    g(f"set terminal {OUTPUT_TYPE} size 1600,1600 background '#332d37' font 'monospace,{fix_size(8)}'")
+    g(f"set terminal {OUTPUT_TYPE} size 1200,1600 background '#332d37' font 'monospace,{fix_size(8)}'")
 
     g(f"set ylabel tc rgb 'white' font 'monospace,{fix_size(8)}'")
 
@@ -325,7 +325,6 @@ def graph(session, fname='plot'):
         space = 3
 
     g("set object rectangle from graph 0, graph 0 to graph 2, graph 2 behind fillcolor rgb '#000000' fillstyle solid noborder")
-    #g(f"set object rectangle from '{START_DATE.replace(' ', '-')}', 0 to '{END_DATE.replace(' ', '-')}', 100 behind fillcolor rgb '#000000' fillstyle solid noborder")
 
     # Set scale for plots displayed in relative units (%)
     g("set yrange [0:100]")
