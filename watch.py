@@ -277,8 +277,8 @@ def watch(session, fsdev, iface):
                   cpu_data['%user'][0],
                   ram_data['%memused'][0],
                   fs_data['%fsused'][FS_SAR_INDEX],
-                  net_data['rxkB/s'][IFACE_SAR_INDEX],
-                  net_data['txkB/s'][IFACE_SAR_INDEX],
+                  stof(net_data['rxkB/s'][IFACE_SAR_INDEX])*1024,
+                  stof(net_data['txkB/s'][IFACE_SAR_INDEX])*1024,
                   file=f)
 
         if die:
