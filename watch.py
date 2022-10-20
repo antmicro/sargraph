@@ -233,7 +233,6 @@ def watch(session, fsdev, iface):
 
         # Read and process network data
         net_data = read_table(p.stdout)
-        print(net_data)
         if IFACE_SAR_INDEX is None:
             if iface:
                 IFACE_SAR_INDEX = net_data['IFACE'].index(iface)
