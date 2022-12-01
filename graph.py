@@ -207,8 +207,8 @@ def read_comments(session):
     TOTAL_FS = unit_str(TOTAL_FS, DATA_UNITS)
     MAX_USED_FS = unit_str(MAX_USED_FS, DATA_UNITS)
 
-    MAX_RX = unit_str(MAX_RX, DATA_UNITS)
-    MAX_TX = unit_str(MAX_TX, DATA_UNITS)
+    MAX_RX = unit_str(MAX_RX, SPEED_UNITS)
+    MAX_TX = unit_str(MAX_TX, SPEED_UNITS)
 
     DURATION = unit_str(DURATION, TIME_UNITS, 60)
 
@@ -346,9 +346,9 @@ def graph(session, fname='plot'):
 
 
     # Set scale for plots displayed in absolute units
-    plot(f"{NAME_IFACE} received (B/s)", f"{NAME_IFACE} data received (max = {MAX_RX}/s)",
+    plot(f"{NAME_IFACE} received (Mb/s)", f"{NAME_IFACE} data received (max = {MAX_RX})",
          session, 5, space=space, autoscale=1.2)
-    plot(f"{NAME_IFACE} sent (B/s)", f"{NAME_IFACE} data sent (max = {MAX_TX}/s)",
+    plot(f"{NAME_IFACE} sent (Mb/s)", f"{NAME_IFACE} data sent (max = {MAX_TX})",
          session, 6, space=space, autoscale=1.2)
 
     g("unset multiplot")

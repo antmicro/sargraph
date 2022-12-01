@@ -114,8 +114,8 @@ def summarize(session):
     total_ram = TOTAL_RAM * 1024.0
     max_used_fs = MAX_USED_FS * 1024.0 * 1024.0
     total_fs = TOTAL_FS * 1024 * 1024
-    max_tx = MAX_TX * 1024
-    max_rx = MAX_RX * 1024
+    max_tx = MAX_TX / 128 # kB/s to Mb/s
+    max_rx = MAX_RX / 128 # kB/s to Mb/s
 
     sdt = datetime.datetime.strptime(START_DATE, '%Y-%m-%d %H:%M:%S')
     edt = datetime.datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
@@ -128,8 +128,8 @@ def summarize(session):
               f"max disk used: {max_used_fs:.2f} B",
               f"average load: {average_load:.2f} %",
               f"observed disk: {FS_NAME}",
-              f"max data received: {max_rx:.2f} B",
-              f"max data sent: {max_tx:.2f} B",
+              f"max data received: {max_rx:.2f} Mb/s",
+              f"max data sent: {max_tx:.2f} Mb/s",
               f"observed network: {IFACE_NAME}",
               f"duration: {delta_t} seconds",
               sep=", ", file=f)
@@ -277,8 +277,8 @@ def watch(session, fsdev, iface):
                   cpu_data['%user'][0],
                   ram_data['%memused'][0],
                   fs_data['%fsused'][FS_SAR_INDEX],
-                  stof(net_data['rxkB/s'][IFACE_SAR_INDEX])*1024,
-                  stof(net_data['txkB/s'][IFACE_SAR_INDEX])*1024,
+                  stof(net_data['rxkB/s'][IFACE_SAR_INDEX])/128, # kB/s to Mb/s
+                  stof(net_data['txkB/s'][IFACE_SAR_INDEX])/128, # kB/s to Mb/s
                   file=f)
 
         if die:

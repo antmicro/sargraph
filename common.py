@@ -19,7 +19,7 @@ SARGRAPH_VERSION = "2.2.1"
 # Define units for use with unit_str
 TIME_UNITS = ['seconds', 'minutes', 'hours']
 DATA_UNITS = ['B', 'kB', 'MB', 'GB', 'TB', 'PB']
-
+SPEED_UNITS = ['Mb/s', 'Gb/s', 'Tb/s', 'Pb/s']
 
 # Print an error message and exit with non-zero status
 def fail(msg):
