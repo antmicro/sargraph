@@ -85,7 +85,17 @@ def fix_size(size):
 
 
 # Plot a single column of values from data.txt
-def plot(ylabel, title, session, column, space=3):
+def plot(ylabel, title, session, column, space=3, autoscale=None):
+    if autoscale is None:
+        g("set yrange [0:100]")
+        g("set cbrange [0:100]")
+    else:
+        g("unset xdata")
+        g("set yrange [0:*]")
+        g(f"stats '{session}.txt' using {column}")
+        g(f"set yrange [0:STATS_max*{autoscale}]")
+        g(f"set cbrange [0:STATS_max*{autoscale}]")
+        g("set xdata time")
     g(f"set ylabel '{ylabel}'")
     g(f"set title \"{{/:Bold {title}}}" + ("\\n" * space) + "\"")
     g(f"plot '{session}.txt' using 1:{column}:{column} title 'cpu' with boxes palette")
@@ -327,8 +337,6 @@ def graph(session, fname='plot'):
     g("set object rectangle from graph 0, graph 0 to graph 2, graph 2 behind fillcolor rgb '#000000' fillstyle solid noborder")
 
     # Set scale for plots displayed in relative units (%)
-    g("set yrange [0:100]")
-    g("set cbrange [0:100]")
     plot("CPU load (%)",
          f"CPU load (average = {AVERAGE_LOAD:.2f} %)", session, 2, space=space)
     plot(f"RAM usage (100% = {TOTAL_RAM})",
@@ -338,12 +346,10 @@ def graph(session, fname='plot'):
 
 
     # Set scale for plots displayed in absolute units
-    g("set yrange [0:*]")
-    g("set cbrange [0:*]")
     plot(f"{NAME_IFACE} received (B/s)", f"{NAME_IFACE} data received (max = {MAX_RX}/s)",
-         session, 5, space=space)
+         session, 5, space=space, autoscale=1.2)
     plot(f"{NAME_IFACE} sent (B/s)", f"{NAME_IFACE} data sent (max = {MAX_TX}/s)",
-         session, 6, space=space)
+         session, 6, space=space, autoscale=1.2)
 
     g("unset multiplot")
     g("unset output")
