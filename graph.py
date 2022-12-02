@@ -20,6 +20,7 @@ global gnuplot
 
 GNUPLOT_VERSION_EXPECTED = "5.0"
 
+# Every summary variable requires a default value in case it missed in a session log
 START_DATE = ""
 END_DATE = ""
 AVERAGE_LOAD = 0.0
@@ -141,6 +142,7 @@ def read_comments(session):
                 # Comments are not mixed with anything else, so skip
                 continue
 
+            # Override summary variables. If they're missing, their default values are kept
             value = scan("sargraph version: (\d+\.\d+)", str, line)
             if value is not None:
                 data_version = value
