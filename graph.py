@@ -372,113 +372,6 @@ def read_data(session):
     return (xdata, ydata)
 
 
-def create_ascii_plot(
-        title: str,
-        xtitle: str,
-        xunit: str,
-        ytitle: str,
-        yunit: str,
-        xdata: List,
-        ydata: List,
-        x_range: Optional[Tuple] = (0, 10),
-        y_range: Optional[Tuple] = (0, 100),
-        trimxvalues: bool = True,
-        skipfirst: bool = False,
-        figsize: Optional[Tuple] = None,
-        switchtobarchart: bool = False,
-        canvas_color='black',
-        axes_color='black',
-        ticks_color='white'):
-    try:
-        import plotext
-    except ImportError:
-        fail('could not import plotext - please install the module')
-    plotext.clear_figure()
-    start = 1 if skipfirst else 0
-    xdata = xdata[start:]
-    ydata = ydata[start:]
-
-    xdata = [datetime.datetime.fromtimestamp(x).strftime('%H:%M:%S') for x in xdata]
-
-    if trimxvalues:
-        minx = min(xdata)
-        xdata = [x - minx for x in xdata]
-
-    xlabel = xtitle
-    if xunit is not None:
-        xlabel += f' [{xunit}]'
-    ylabel = ytitle
-    if yunit is not None:
-        ylabel += f' [{yunit}]'
-
-    if switchtobarchart == True:
-        plotext.bar(xdata, ydata, width=0.1)
-    else:
-        plotext.scatter(xdata, ydata)
-    if figsize is not None:
-        plotext.limit_size(False)
-        plotext.plot_size(figsize[0], figsize[1])
-
-    if x_range is not None:
-        plotext.xlim(x_range[0], x_range[1])
-    if y_range is not None:
-        plotext.ylim(y_range[0], y_range[1])
-    plotext.title(title)
-    plotext.xlabel(xlabel)
-    plotext.ylabel(ylabel)
-    plotext.canvas_color(canvas_color)
-    plotext.axes_color(axes_color)
-    plotext.ticks_color(ticks_color)
-    plotext.show()
-
-
-def render_ascii_plot(
-        outpath: Path,
-        summary: str,
-        titles: List,
-        xtitles: List,
-        xunits: List,
-        ytitles: List,
-        yunits: List,
-        xdata: List,
-        ydatas: List,
-        x_range: Optional[Tuple] = None,
-        y_range: Optional[Tuple] = None,
-        trimxvalues: bool = True,
-        skipfirst: bool = False,
-        figsize: Optional[Tuple] = None,
-        switchtobarchart: bool = True,
-        canvas_color='black',
-        axes_color='black',
-        ticks_color='white'):
-
-    print(f'Saving to {outpath}')
-    with open(outpath, 'w') as outfile:
-        with redirect_stdout(outfile):
-            print(summary)
-            print('\n\n')
-            for title, xtitle, xunit, ytitle, yunit, ydata in zip(titles, xtitles, xunits, ytitles, yunits, ydatas):  # noqa: E501
-                create_ascii_plot(
-                    title,
-                    xtitle,
-                    xunit,
-                    ytitle,
-                    yunit,
-                    xdata,
-                    ydata,
-                    x_range=x_range,
-                    y_range=y_range,
-                    trimxvalues=trimxvalues,
-                    skipfirst=skipfirst,
-                    figsize=figsize,
-                    switchtobarchart=switchtobarchart,
-                    canvas_color=canvas_color,
-                    axes_color=axes_color,
-                    ticks_color=ticks_color
-                )
-                print('\n\n')
-
-
 def ascii_graph(session, fname='plot'):
     data = read_data(session)
     titles = [f"""cpu load (average = {AVERAGE_LOAD} %)""",
@@ -502,20 +395,20 @@ def ascii_graph(session, fname='plot'):
     summary += f"Total ram: {TOTAL_RAM}, Total disk space: {TOTAL_FS}\n"
     summary += f"Duration: {START_DATE} .. {END_DATE} ({DURATION})"
 
-    render_ascii_plot(
-        Path(fname).with_suffix(".ascii"),
+    from servis import render_multiple_time_series_plot
+
+    render_multiple_time_series_plot(
+        ydata,
+        [xdata_to_int]*5,
         summary,
         titles,
-        ["time", "time", "time", "time", "time"],
-        [None, None, None, None, None],
+        ['time']*5,
+        [None]*5,
         y_titles,
-        [None, None, None, None, None],
-        xdata_to_int,
-        ydata,
-        x_range=(0, 160),
-        y_range=(0, 100),
+        [None]*5,
+        [(0, 160)]*5,
+        [(0, 100)]*5,
+        outpath=Path(fname),
         trimxvalues=False,
-        skipfirst=False,
-        switchtobarchart=True,
         figsize=(90, 70)
     )
