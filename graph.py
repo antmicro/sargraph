@@ -11,8 +11,6 @@ import os
 import socket
 import subprocess
 import time
-from typing import List, Tuple, Optional
-from contextlib import redirect_stdout
 from common import *
 from pathlib import Path
 
@@ -244,6 +242,9 @@ def graph(session, fname='plot'):
     elif fname.lower().endswith('.ascii'):
         OUTPUT_TYPE = "ascii"
         OUTPUT_EXT = "ascii"
+    elif fname.lower().endswith('.html'):
+        OUTPUT_TYPE = "html"
+        OUTPUT_EXT = "html"
     else:
         pass
         # fail("unknown graph extension")
@@ -253,7 +254,11 @@ def graph(session, fname='plot'):
 
     # ASCII plots have their own routine
     if OUTPUT_TYPE == "ascii":
-        return ascii_graph(session, fname)
+        return servis_graph(session, fname)
+
+    # HTML plots have their own routine
+    if OUTPUT_TYPE == "html":
+        return servis_graph(session, fname, "html")
 
     read_comments(session)
 
@@ -346,7 +351,6 @@ def graph(session, fname='plot'):
     plot(f"FS usage (100% = {TOTAL_FS})", f"{NAME_FS} usage (max = {MAX_USED_FS})",
          session, 4, space=space)
 
-
     # Set scale for plots displayed in absolute units
     plot(f"{NAME_IFACE} received (Mb/s)", f"{NAME_IFACE} data received (max = {MAX_RX})",
          session, 5, space=space, autoscale=1.2)
@@ -372,13 +376,26 @@ def read_data(session):
     return (xdata, ydata)
 
 
-def ascii_graph(session, fname='plot'):
+def convert_labels_to_tags(labels):
+    tags = []
+    for [label_date, label_name] in labels:
+        label_date = datetime.datetime.strptime(
+            label_date, '%Y-%m-%d-%H:%M:%S')
+        label_ts = int(label_date.replace(
+            tzinfo=datetime.timezone.utc).timestamp()*1000)/1000
+        tags.append({'name': label_name,
+                     'timestamp': label_ts})
+    return tags
+
+
+def servis_graph(session, fname='plot', output_ext='ascii'):
     data = read_data(session)
+    read_comments(session)
     titles = [f"""cpu load (average = {AVERAGE_LOAD} %)""",
-                 f"""ram usage (max = {MAX_USED_RAM})""",
-                 f"""{NAME_FS} usage (max = {MAX_USED_FS})""",
-                 f"""{NAME_IFACE} data received (max = {MAX_RX})""",
-                 f"""{NAME_IFACE} data sent (max = {MAX_TX})"""]
+              f"""ram usage (max = {MAX_USED_RAM})""",
+              f"""{NAME_FS} usage (max = {MAX_USED_FS})""",
+              f"""{NAME_IFACE} data received (max = {MAX_RX})""",
+              f"""{NAME_IFACE} data sent (max = {MAX_TX})"""]
 
     y_titles = [f"cpu % load (user)",
                 f"ram % usage",
@@ -388,7 +405,7 @@ def ascii_graph(session, fname='plot'):
 
     xdata, ydata = data
     xdata_to_int = [int(timestamp.replace(
-        tzinfo=datetime.timezone.utc).timestamp()*1000)/1000 
+        tzinfo=datetime.timezone.utc).timestamp()*1000)/1000
         for timestamp in xdata]
 
     summary = f"Running on {UNAME}, {CPUS} threads x {CPU_NAME}\n"
@@ -396,19 +413,39 @@ def ascii_graph(session, fname='plot'):
     summary += f"Duration: {START_DATE} .. {END_DATE} ({DURATION})"
 
     from servis import render_multiple_time_series_plot
-
-    render_multiple_time_series_plot(
-        ydata,
-        [xdata_to_int]*5,
-        summary,
-        titles,
-        ['time']*5,
-        [None]*5,
-        y_titles,
-        [None]*5,
-        [(0, 160)]*5,
-        [(0, 100)]*5,
-        outpath=Path(fname),
-        trimxvalues=False,
-        figsize=(90, 70)
-    )
+    if output_ext == 'ascii':
+        render_multiple_time_series_plot(
+            ydata,
+            [xdata_to_int]*5,
+            summary,
+            titles,
+            ['time']*5,
+            [None]*5,
+            y_titles,
+            [None]*5,
+            [(0, 160)]*5,
+            [(0, 100)]*5,
+            outpath=Path(fname),
+            trimxvalues=False,
+            figsize=(90, 70)
+        )
+    elif output_ext == 'html':
+        l = convert_labels_to_tags(labels)
+        render_multiple_time_series_plot(
+            ydata,
+            [xdata_to_int]*5,
+            summary,
+            titles,
+            ['time']*5,
+            [None]*5,
+            y_titles,
+            [None]*5,
+            # [(0, 160)]*5,
+            # [(0, 100)]*5,
+            outpath=Path(fname),
+            outputext=['html'],
+            trimxvalues=False,
+            figsize=(1200, 1600),
+            tags=[l]*5,
+            setgradientcolors=True
+        )
