@@ -1,1 +1,1 @@
-plotext
+git+https://github.com/antmicro/servis
