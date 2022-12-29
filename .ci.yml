@@ -1,12 +1,14 @@
 image: debian:bullseye
 
 before_script:
+  - chmod +x scripts/install_dependencies.sh
   - ./scripts/install_dependencies.sh
 simple_test:
   variables:
     FAKE_DISK: "fake_disk.ext4"
     FAKE_MOUNTPOINT: "fake_mountpoint"
   script:
+    - chmod +x scripts/tests/simple_test.sh
     - ./scripts/tests/simple_test.sh
   artifacts:
     when: always
@@ -22,7 +24,8 @@ interactive_plot_test:
     FAKE_DISK: "fake_disk.ext4"
     FAKE_MOUNTPOINT: "fake_mountpoint"
   script:
-    -  ./scripts/tests/interactive_plot_test.sh
+    - chmod +x scripts/tests/interactive_plot_test.sh
+    - ./scripts/tests/interactive_plot_test.sh
   artifacts:
     when: always
     paths:
