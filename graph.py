@@ -415,16 +415,15 @@ def servis_graph(session, fname='plot', output_ext='ascii'):
     from servis import render_multiple_time_series_plot
     if output_ext == 'ascii':
         render_multiple_time_series_plot(
-            ydata,
-            [xdata_to_int]*5,
-            summary,
-            titles,
-            ['time']*5,
-            [None]*5,
-            y_titles,
-            [None]*5,
-            [(0, 160)]*5,
-            [(0, 100)]*5,
+            ydatas=ydata,
+            xdatas=[xdata_to_int]*5,
+            title=summary,
+            subtitles=titles,
+            xtitles=['time']*5,
+            xunits=[None]*5,
+            ytitles=y_titles,
+            yunits=[None]*5,
+            y_ranges=[(0, 100)]*5,
             outpath=Path(fname),
             trimxvalues=False,
             figsize=(90, 70)
@@ -432,14 +431,14 @@ def servis_graph(session, fname='plot', output_ext='ascii'):
     elif output_ext == 'html':
         l = convert_labels_to_tags(labels)
         render_multiple_time_series_plot(
-            ydata,
-            [xdata_to_int]*5,
-            summary,
-            titles,
-            ['time']*5,
-            [None]*5,
-            y_titles,
-            [None]*5,
+            ydatas=ydata,
+            xdatas=[xdata_to_int]*5,
+            title=summary,
+            subtitles=titles,
+            xtitles=['time']*5,
+            xunits=[None]*5,
+            ytitles=y_titles,
+            yunits=[None]*5,
             y_ranges=[(0, 100)]*5,
             outpath=Path(fname),
             outputext=['html'],
