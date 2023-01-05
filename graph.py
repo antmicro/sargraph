@@ -423,7 +423,7 @@ def servis_graph(session, fname='plot', output_ext='ascii'):
             xunits=[None]*5,
             ytitles=y_titles,
             yunits=[None]*5,
-            y_ranges=[(0, 100)]*5,
+            y_ranges=[(0, 100), (0, 100), (0, 100), None, None],
             outpath=Path(fname),
             trimxvalues=False,
             figsize=(90, 70)
@@ -439,7 +439,7 @@ def servis_graph(session, fname='plot', output_ext='ascii'):
             xunits=[None]*5,
             ytitles=y_titles,
             yunits=[None]*5,
-            y_ranges=[(0, 100)]*5,
+            y_ranges=[(0, 100), (0, 100), (0, 100), None, None],
             outpath=Path(fname),
             outputext=['html'],
             trimxvalues=False,
