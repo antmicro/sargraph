@@ -8,8 +8,8 @@ simple_test:
     FAKE_DISK: "fake_disk.ext4"
     FAKE_MOUNTPOINT: "fake_mountpoint"
   script:
-    - chmod +x scripts/tests/simple_test.sh
-    - ./scripts/tests/simple_test.sh
+    - chmod +x scripts/test.sh
+    - ./scripts/test.sh svg png ascii
   artifacts:
     when: always
     paths:
@@ -24,8 +24,8 @@ interactive_plot_test:
     FAKE_DISK: "fake_disk.ext4"
     FAKE_MOUNTPOINT: "fake_mountpoint"
   script:
-    - chmod +x scripts/tests/interactive_plot_test.sh
-    - ./scripts/tests/interactive_plot_test.sh
+    - chmod +x scripts/test.sh
+    - ./scripts/test.sh html
   artifacts:
     when: always
     paths:

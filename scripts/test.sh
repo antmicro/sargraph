@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [[ "$@" =~ 'html' ]] 
+then 
+    pip install git+https://github.com/antmicro/servis#egg=servis[bokeh] 
+fi
+
 dd if=/dev/zero of=$FAKE_DISK bs=1M count=130
 mkfs.ext4 $FAKE_DISK
 mkdir -p $FAKE_MOUNTPOINT && mount $FAKE_DISK $FAKE_MOUNTPOINT
@@ -12,15 +17,22 @@ stress -c 16 -i 1 -m 1 --vm-bytes 512M -d 1 --hdd-bytes 70M -t 160s
 
 popd
 
-sargraph chart save plot.svg
-sargraph chart save plot.png
-sargraph chart save plot.ascii
+for ext in "$@"
+do
+    sargraph chart save "plot.${ext}"
+done
+
 sargraph chart stop
 
-test -f plot.svg
-test -f plot.png
-test -f plot.ascii
+for ext in "$@"
+do
+    test -f "plot.${ext}"
+done
 
 cat chart.log
-echo '------Sample plot------'
-cat plot.ascii
+
+if [[ "$@" =~ 'ascii' ]] 
+then    
+    echo '------Sample plot------'
+    cat plot.ascii
+fi
