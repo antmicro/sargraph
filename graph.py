@@ -36,6 +36,12 @@ CPUS = 0
 CPU_NAME = "unknown"
 DURATION = 0.0
 
+GPU_NAME = None
+GPU_DRIVER = None
+AVERAGE_GPU_LOAD = 0
+TOTAL_GPU_RAM = 0
+MAX_USED_GPU_RAM = 0
+
 HOST = socket.gethostname()
 
 # The number of plots on the graph
@@ -117,6 +123,12 @@ def read_comments(session):
     global MAX_RX
     global MAX_TX
     global NAME_IFACE
+    global GPU_NAME
+    global GPU_DRIVER
+    global AVERAGE_GPU_LOAD
+    global TOTAL_GPU_RAM
+    global MAX_USED_GPU_RAM
+    global NUMBER_OF_PLOTS
 
     data_version = None
 
@@ -197,6 +209,26 @@ def read_comments(session):
             if value is not None:
                 AVERAGE_LOAD = value
 
+            value = scan("total gpu ram: (\S+)", stof, line)
+            if value is not None:
+                TOTAL_GPU_RAM = value
+
+            value = scan("max gpu ram used: (\S+)", stof, line)
+            if value is not None:
+                MAX_USED_GPU_RAM = value
+
+            value = scan("gpu: ([^,\n]+)", str, line)
+            if value is not None:
+                GPU_NAME = value
+
+            value = scan("gpu driver: ([^,\n]+)", str, line)
+            if value is not None:
+                GPU_DRIVER = value
+
+            value = scan("average gpu load: (\S+)", stof, line)
+            if value is not None:
+                AVERAGE_GPU_LOAD = value
+
     if data_version != scan("^(\d+\.\d+)", str, SARGRAPH_VERSION):
         print("Warning: the data comes from an incompatible version of sargraph")
 
@@ -209,6 +241,13 @@ def read_comments(session):
 
     MAX_RX = unit_str(MAX_RX, SPEED_UNITS)
     MAX_TX = unit_str(MAX_TX, SPEED_UNITS)
+
+    if TOTAL_GPU_RAM:
+        TOTAL_GPU_RAM = unit_str(TOTAL_GPU_RAM, DATA_UNITS)
+        # Add GPU RAM utilization and GPU utilization plots
+        NUMBER_OF_PLOTS += 2
+    if MAX_USED_GPU_RAM:
+        MAX_USED_GPU_RAM = unit_str(MAX_USED_GPU_RAM, DATA_UNITS)
 
     DURATION = unit_str(DURATION, TIME_UNITS, 60)
 
@@ -300,9 +339,13 @@ def graph(session, fname='plot'):
 
     title_machine = f"Running on {{/:Bold {HOST}}} \@ {{/:Bold {UNAME}}}, {{/:Bold {CPUS}}} threads x {{/:Bold {CPU_NAME}}}"
     title_specs = f"Total ram: {{/:Bold {TOTAL_RAM}}}, Total disk space: {{/:Bold {TOTAL_FS}}}"
+    if TOTAL_GPU_RAM != 0:
+        title_gpu = f"\\nGPU:  {{/:Bold {GPU_NAME}}} (driver {{/:Bold {GPU_DRIVER}}}, total ram: {{/:Bold {TOTAL_GPU_RAM}}}"
+    else:
+        title_gpu = ""
     title_times = f"Duration: {{/:Bold {START_DATE}}} .. {{/:Bold {END_DATE}}} ({DURATION})"
 
-    g(f"set multiplot layout {NUMBER_OF_PLOTS},1 title \"\\n{title_machine}\\n{title_specs}\\n{title_times}\" offset screen -0.475, 0 left tc rgb 'white'")
+    g(f"set multiplot layout {NUMBER_OF_PLOTS},1 title \"\\n{title_machine}\\n{title_specs}{title_gpu}\\n{title_times}\" offset screen -0.475, 0 left tc rgb 'white'")
 
     g(f"set title tc rgb 'white' font 'monospace,{fix_size(11)}'")
 
@@ -357,6 +400,13 @@ def graph(session, fname='plot'):
     plot(f"{NAME_IFACE} sent (Mb/s)", f"{NAME_IFACE} data sent (max = {MAX_TX})",
          session, 6, space=space, autoscale=1.2)
 
+    # GPU params
+    if TOTAL_GPU_RAM != 0:
+        plot("GPU load (%)",
+             f"GPU load (average = {AVERAGE_GPU_LOAD} %)", session, 7, space=space)
+        plot(f"GPU RAM usage (100% = {TOTAL_GPU_RAM})",
+             f"GPU RAM usage (max = {MAX_USED_GPU_RAM})", session, 8, space=space)
+
     g("unset multiplot")
     g("unset output")
     g("quit")
@@ -364,7 +414,7 @@ def graph(session, fname='plot'):
 
 def read_data(session):
     xdata = list()
-    ydata = [[], [], [], [], []]
+    ydata = [[] for _ in range(NUMBER_OF_PLOTS)]
     with open(f"{session}.txt", "r") as f:
         for line in f:
             if(line[0] != '#'):
@@ -389,61 +439,88 @@ def convert_labels_to_tags(labels):
 
 
 def servis_graph(session, fname='plot', output_ext='ascii'):
-    data = read_data(session)
     read_comments(session)
-    titles = [f"""cpu load (average = {AVERAGE_LOAD} %)""",
-              f"""ram usage (max = {MAX_USED_RAM})""",
+    xdata, ydata = read_data(session)
+    titles = [f"""CPU load (average = {AVERAGE_LOAD} %)""",
+              f"""RAM usage (max = {MAX_USED_RAM})""",
               f"""{NAME_FS} usage (max = {MAX_USED_FS})""",
               f"""{NAME_IFACE} data received (max = {MAX_RX})""",
               f"""{NAME_IFACE} data sent (max = {MAX_TX})"""]
 
-    y_titles = [f"cpu % load (user)",
-                f"ram % usage",
-                f"{NAME_FS}",
+    if TOTAL_GPU_RAM != 0:
+        titles.extend([
+            f"GPU load (average = {AVERAGE_GPU_LOAD} %)",
+            f"GPU RAM usage (max = {MAX_USED_GPU_RAM})"
+        ])
+
+    y_titles = ["CPU load (%)",
+                "RAM usage (100% = {TOTAL_RAM})",
+                f"FS usage (100% = {TOTAL_FS})",
                 f"{NAME_IFACE} received",
                 f"{NAME_IFACE} sent"]
 
-    xdata, ydata = data
+    if TOTAL_GPU_RAM != 0:
+        y_titles.extend([
+            "GPU load (%)",
+            f"GPU RAM usage (100% = {TOTAL_GPU_RAM})"
+        ])
+
     xdata_to_int = [int(timestamp.replace(
         tzinfo=datetime.timezone.utc).timestamp()*1000)/1000
         for timestamp in xdata]
 
     summary = f"Running on {UNAME}, {CPUS} threads x {CPU_NAME}\n"
     summary += f"Total ram: {TOTAL_RAM}, Total disk space: {TOTAL_FS}\n"
+    if TOTAL_GPU_RAM != 0:
+        summary += f"GPU:  {GPU_NAME} (driver {GPU_DRIVER}), total ram: {TOTAL_GPU_RAM}"
     summary += f"Duration: {START_DATE} .. {END_DATE} ({DURATION})"
+
+    y_ranges = [
+        (0, 100),
+        (0, 100),
+        (0, 100),
+        None,
+        None,
+    ]
+
+    if TOTAL_GPU_RAM != 0:
+        y_ranges.extend([
+            (0, 100),
+            (0, 100)
+        ])
 
     from servis import render_multiple_time_series_plot
     if output_ext == 'ascii':
         render_multiple_time_series_plot(
             ydatas=ydata,
-            xdatas=[xdata_to_int]*5,
+            xdatas=[xdata_to_int] * NUMBER_OF_PLOTS,
             title=summary,
             subtitles=titles,
-            xtitles=['time']*5,
-            xunits=[None]*5,
+            xtitles=['time'] * NUMBER_OF_PLOTS,
+            xunits=[None] * NUMBER_OF_PLOTS,
             ytitles=y_titles,
-            yunits=[None]*5,
-            y_ranges=[(0, 100), (0, 100), (0, 100), None, None],
+            yunits=[None] * NUMBER_OF_PLOTS,
+            y_ranges=y_ranges,
             outpath=Path(fname),
             trimxvalues=False,
             figsize=(90, 70)
         )
     elif output_ext == 'html':
-        l = convert_labels_to_tags(labels)
+        converted_labels = convert_labels_to_tags(labels)
         render_multiple_time_series_plot(
             ydatas=ydata,
-            xdatas=[xdata_to_int]*5,
+            xdatas=[xdata_to_int] * NUMBER_OF_PLOTS,
             title=summary,
             subtitles=titles,
-            xtitles=['time']*5,
-            xunits=[None]*5,
+            xtitles=['time'] * NUMBER_OF_PLOTS,
+            xunits=[None] * NUMBER_OF_PLOTS,
             ytitles=y_titles,
-            yunits=[None]*5,
-            y_ranges=[(0, 100), (0, 100), (0, 100), None, None],
+            yunits=[None] * NUMBER_OF_PLOTS,
+            y_ranges=y_ranges,
             outpath=Path(fname),
             outputext=['html'],
             trimxvalues=False,
             figsize=(1200, 1600),
-            tags=[l]*5,
+            tags=[converted_labels] * NUMBER_OF_PLOTS,
             setgradientcolors=True
         )

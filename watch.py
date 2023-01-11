@@ -35,6 +35,10 @@ MAX_TX = 0
 MAX_RX = 0
 TOTAL_FS = 0
 
+TOTAL_GPU_LOAD = 0.0
+TOTAL_GPU_RAM = 0
+MAX_USED_GPU_RAM = 0
+
 FS_NAME = None
 FS_SAR_INDEX = None
 
@@ -77,6 +81,7 @@ def read_table(f):
 # Initialize 'data.txt' where the data is dumped
 def initialize(session, machine):
     global TOTAL_RAM
+    global TOTAL_GPU_RAM
 
     with open("/proc/meminfo") as f:
         TOTAL_RAM = int(scan("MemTotal:\s+(\d+)", float, f.read()))
@@ -93,14 +98,30 @@ def initialize(session, machine):
             if "model name" in line:
                 cpu_name = line.replace("\n", "").split(": ")[1]
                 break
-
+    header = [
+        f"# sargraph version: {SARGRAPH_VERSION}",
+        f"pid: {os.getpid()}",
+        f"machine: {uname}",
+        f"cpu count: {cpus}",
+        f"cpu: {cpu_name}"
+    ]
+    try:
+        pgpu = subprocess.run(
+            'nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader,nounits'.split(' '),
+            capture_output=True
+        )
+        if pgpu.returncode == 0:
+            gpuname, gpudriver, memory_total = pgpu.stdout.decode('utf-8').rsplit(', ', 2)
+            header.extend([
+                f"gpu: {gpuname}",
+                f"gpu driver: {gpudriver}"
+            ])
+            TOTAL_GPU_RAM = int(memory_total)
+    except Exception as e:
+        print(e)
+        pass
     with open(f"{session}.txt", "w") as f:
-        print(f"# sargraph version: {SARGRAPH_VERSION}",
-              f"pid: {os.getpid()}",
-              f"machine: {uname}",
-              f"cpu count: {cpus}",
-              f"cpu: {cpu_name}",
-              sep=", ", file=f)
+        print(*header, sep=", ", file=f)
 
 
 # Add a summary comment to 'data.txt'
@@ -121,18 +142,28 @@ def summarize(session):
     edt = datetime.datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
     delta_t = (edt - sdt).total_seconds()
 
+    summary = [
+        f"# total ram: {total_ram:.2f} B",
+        f"total disk space: {total_fs:.2f} B",
+        f"max ram used: {max_used_ram:.2f} B",
+        f"max disk used: {max_used_fs:.2f} B",
+        f"average load: {average_load:.2f} %",
+        f"observed disk: {FS_NAME}",
+        f"max data received: {max_rx:.2f} Mb/s",
+        f"max data sent: {max_tx:.2f} Mb/s",
+        f"observed network: {IFACE_NAME}",
+        f"duration: {delta_t} seconds"
+    ]
+
+    if TOTAL_GPU_RAM != 0:
+        summary.extend([
+            f"total gpu ram: {TOTAL_GPU_RAM * 1024 * 1024:.2f} B",  # default units are MiB
+            f"max gpu ram used: {MAX_USED_GPU_RAM * 1024 * 1024:.2f} B",  # default units are MiB
+            f"average gpu load: {TOTAL_GPU_LOAD / SAMPLE_NUMBER} %"
+        ])
+
     with open(f"{session}.txt", "a") as f:
-        print(f"# total ram: {total_ram:.2f} B",
-              f"total disk space: {total_fs:.2f} B",
-              f"max ram used: {max_used_ram:.2f} B",
-              f"max disk used: {max_used_fs:.2f} B",
-              f"average load: {average_load:.2f} %",
-              f"observed disk: {FS_NAME}",
-              f"max data received: {max_rx:.2f} Mb/s",
-              f"max data sent: {max_tx:.2f} Mb/s",
-              f"observed network: {IFACE_NAME}",
-              f"duration: {delta_t} seconds",
-              sep=", ", file=f)
+        print(*summary, sep=", ", file=f)
 
 
 # Run sar and gather data from it
@@ -153,6 +184,9 @@ def watch(session, fsdev, iface):
     global FS_NAME
     global IFACE_NAME
     global IFACE_SAR_INDEX
+    global TOTAL_GPU_LOAD
+    global TOTAL_GPU_RAM
+    global MAX_USED_GPU_RAM
 
     global die
 
@@ -162,6 +196,15 @@ def watch(session, fsdev, iface):
     my_env = os.environ
     my_env["S_TIME_FORMAT"] = "ISO"
     p = run_or_fail("sar", "-F", "-u", "-r", "-n", "DEV", "1", stdout=subprocess.PIPE, env=my_env)
+    # subprocess for GPU data fetching in the background
+    try:
+        pgpu = subprocess.Popen(
+            'nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits -l 1'.split(' '),
+            stdout=subprocess.PIPE,
+            env=my_env
+        )
+    except:
+        pgpu = None
 
     machine = p.stdout.readline().decode()
     initialize(session, machine)
@@ -173,10 +216,16 @@ def watch(session, fsdev, iface):
     flags = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
     fcntl.fcntl(sys.stdin, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
+    readlist = [p.stdout, sys.stdin]
+    if pgpu:
+        readlist.append(pgpu.stdout)
     # Gather data from sar output
+    curr_gpu_util = 0
+    curr_gpu_mem = 0
+
     while 1:
         # Await sar output or a command sent from command handler in sargraph.py
-        rlist, _, _ = select.select([p.stdout, sys.stdin], [], [], 0.25)
+        rlist, _, _ = select.select(readlist, [], [], 0.25)
         now = datetime.datetime.now()
         if sys.stdin in rlist:
             label_line = sys.stdin.readline().replace("\n", "")
@@ -272,14 +321,29 @@ def watch(session, fsdev, iface):
         END_DATE = date + " " + daytime
         timestamp = date + "-" + daytime
 
+        if pgpu and pgpu.stdout in rlist:
+            line = pgpu.stdout.readline().decode('utf-8')
+            curr_gpu_util, curr_gpu_mem = [
+                int(val.strip()) for val in line.split(', ')
+            ]
+            if MAX_USED_GPU_RAM < curr_gpu_mem:
+                MAX_USED_GPU_RAM = curr_gpu_mem
+            TOTAL_GPU_LOAD += curr_gpu_util
         with open(f"{session}.txt", "a") as f:
-            print(timestamp,
-                  cpu_data['%user'][0],
-                  ram_data['%memused'][0],
-                  fs_data['%fsused'][FS_SAR_INDEX],
-                  stof(net_data['rxkB/s'][IFACE_SAR_INDEX])/128, # kB/s to Mb/s
-                  stof(net_data['txkB/s'][IFACE_SAR_INDEX])/128, # kB/s to Mb/s
-                  file=f)
+            line = [
+                timestamp,
+                cpu_data['%user'][0],
+                ram_data['%memused'][0],
+                fs_data['%fsused'][FS_SAR_INDEX],
+                stof(net_data['rxkB/s'][IFACE_SAR_INDEX])/128, # kB/s to Mb/s
+                stof(net_data['txkB/s'][IFACE_SAR_INDEX])/128 # kB/s to Mb/s
+            ]
+            if pgpu and TOTAL_GPU_RAM != 0:
+                line.extend([
+                    curr_gpu_util,
+                    curr_gpu_mem / TOTAL_GPU_RAM
+                ])
+            print(*line, file=f)
 
         if die:
             break
