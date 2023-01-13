@@ -159,7 +159,7 @@ def summarize(session):
         summary.extend([
             f"total gpu ram: {TOTAL_GPU_RAM * 1024 * 1024:.2f} B",  # default units are MiB
             f"max gpu ram used: {MAX_USED_GPU_RAM * 1024 * 1024:.2f} B",  # default units are MiB
-            f"average gpu load: {TOTAL_GPU_LOAD / SAMPLE_NUMBER} %"
+            f"average gpu load: {TOTAL_GPU_LOAD / SAMPLE_NUMBER:.2f} %"
         ])
 
     with open(f"{session}.txt", "a") as f:
@@ -340,8 +340,8 @@ def watch(session, fsdev, iface):
             ]
             if pgpu and TOTAL_GPU_RAM != 0:
                 line.extend([
-                    curr_gpu_util,
-                    curr_gpu_mem / TOTAL_GPU_RAM * 100.0
+                    f'{curr_gpu_util:.2f}',
+                    f'{curr_gpu_mem / TOTAL_GPU_RAM * 100.0:.2f}'
                 ])
             print(*line, file=f)
 
