@@ -341,7 +341,7 @@ def watch(session, fsdev, iface):
             if pgpu and TOTAL_GPU_RAM != 0:
                 line.extend([
                     curr_gpu_util,
-                    curr_gpu_mem / TOTAL_GPU_RAM
+                    curr_gpu_mem / TOTAL_GPU_RAM * 100.0
                 ])
             print(*line, file=f)
 
