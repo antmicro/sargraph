@@ -26,9 +26,9 @@ jobs:
               with:
                   name: sargraph-sample-graphs
                   path: |
-                      *.svg
-                      *.png
-                      *.ascii
-                      *.html
-                      *.txt
-                      *.log
+                      plot.svg
+                      plot.png
+                      plot.ascii
+                      plot.html
+                      example.txt
+                      example.log
