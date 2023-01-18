@@ -20,6 +20,7 @@ jobs:
             - name: Run README.md snippets
               run: |
                   sudo ./scripts/test.sh
+                  cat plot.ascii
             - name: Upload artifacts
               if: always()
               uses: actions/upload-artifact@v3
