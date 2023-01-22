@@ -1,0 +1,40 @@
+name: Sargraph tests
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+jobs:
+    readme-tests:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout sources
+              uses: actions/checkout@v3
+            - name: Install dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -qqy --no-install-recommends python3 python3-pip git colorized-logs
+                  sudo pip3 install git+https://github.com/antmicro/tuttest.git
+            - name: Run README.md snippets
+              run: |
+                  sudo ./scripts/test.sh
+                  cat plot.ascii | ansi2txt
+                  echo -en '## Sargraph summary\n\n' >> $GITHUB_STEP_SUMMARY
+                  echo -en '```\n' >> $GITHUB_STEP_SUMMARY
+                  cat plot.ascii | ansi2txt >> $GITHUB_STEP_SUMMARY
+                  echo -en '\n```\n' >> $GITHUB_STEP_SUMMARY
+
+            - name: Upload artifacts
+              if: always()
+              uses: actions/upload-artifact@v3
+              with:
+                  name: sargraph-sample-graphs
+                  path: |
+                      plot.svg
+                      plot.png
+                      plot.ascii
+                      plot.html
+                      example.txt
+                      example.log

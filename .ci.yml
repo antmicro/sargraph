@@ -11,9 +11,9 @@ simple_test:
     artifacts:
         when: always
         paths:
-            - "*.svg"
-            - "*.png"
-            - "*.ascii"
-            - "*.html"
-            - "*.txt"
-            - "*.log"
+            - "plot.svg"
+            - "plot.png"
+            - "plot.ascii"
+            - "plot.html"
+            - "example.log"
+            - "example.txt"
