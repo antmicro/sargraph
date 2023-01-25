@@ -19,7 +19,7 @@ jobs:
                   git clone https://github.com/antmicro/wrap-vt100.git
                   cd wrap-vt100
                   cargo build --release
-                  mv target/release/wrap-vt100 /usr/bin/wrap-vt100 
+                  sudo mv target/release/wrap-vt100 /usr/bin/wrap-vt100 
             - name: Run README.md snippets
               run: |
                   sudo ./scripts/test.sh
