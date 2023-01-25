@@ -17,10 +17,15 @@ jobs:
                   sudo apt-get update
                   sudo apt-get install -qqy --no-install-recommends python3 python3-pip git colorized-logs
                   sudo pip3 install git+https://github.com/antmicro/tuttest.git
+                  git clone https://github.com/antmicro/wrap-vt100.git
+                  cd wrap-vt100
+                  cargo build --release
+                  mv target/release/wrap-vt100 /usr/bin/wrap-vt100 
             - name: Run README.md snippets
               run: |
                   sudo ./scripts/test.sh
                   cat plot.ascii | ansi2txt
+                  cat plot.ascii | wrap-vt100
                   echo -en '## Sargraph summary\n\n' >> $GITHUB_STEP_SUMMARY
                   echo -en '```\n' >> $GITHUB_STEP_SUMMARY
                   cat plot.ascii | ansi2txt >> $GITHUB_STEP_SUMMARY
