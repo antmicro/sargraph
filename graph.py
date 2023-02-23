@@ -454,7 +454,7 @@ def servis_graph(session, fname='plot', output_ext='ascii'):
         ])
 
     y_titles = ["CPU load (%)",
-                "RAM usage (100% = {TOTAL_RAM})",
+                f"RAM usage (100% = {TOTAL_RAM})",
                 f"FS usage (100% = {TOTAL_FS})",
                 f"{NAME_IFACE} received",
                 f"{NAME_IFACE} sent"]
