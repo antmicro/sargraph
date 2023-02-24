@@ -14,7 +14,7 @@ import re
 
 # Increase major number for general changes, middle number for smaller changes
 # that can cause incompatibilities and minor number for regular fixes
-SARGRAPH_VERSION = "2.2.1"
+SARGRAPH_VERSION = "2.3.1"
 
 # Define units for use with unit_str
 TIME_UNITS = ['seconds', 'minutes', 'hours']
