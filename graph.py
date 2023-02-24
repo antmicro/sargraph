@@ -26,6 +26,8 @@ MAX_USED_RAM = 0
 MAX_USED_FS = 0
 MAX_TX = 0
 MAX_RX = 0
+TOTAL_TX = 0
+TOTAL_RX = 0
 TOTAL_RAM = 0
 TOTAL_FS = 0
 NAME_FS = "unknown"
@@ -122,6 +124,8 @@ def read_comments(session):
     global DURATION
     global MAX_RX
     global MAX_TX
+    global TOTAL_RX
+    global TOTAL_TX
     global NAME_IFACE
     global GPU_NAME
     global GPU_DRIVER
@@ -189,13 +193,21 @@ def read_comments(session):
             if value is not None:
                 TOTAL_FS = value
 
-            value = scan("max data received: (\S+)", stof, line)
+            value = scan("max received: (\S+)", stof, line)
             if value is not None:
                 MAX_RX = value
 
-            value = scan("max data sent: (\S+)", stof, line)
+            value = scan("max sent: (\S+)", stof, line)
             if value is not None:
                 MAX_TX = value
+
+            value = scan("total received: (\S+)", stof, line)
+            if value is not None:
+                TOTAL_RX = value
+
+            value = scan("total sent: (\S+)", stof, line)
+            if value is not None:
+                TOTAL_TX = value
 
             value = scan("duration: (\S+)", stof, line)
             if value is not None:
@@ -241,6 +253,9 @@ def read_comments(session):
 
     MAX_RX = unit_str(MAX_RX, SPEED_UNITS)
     MAX_TX = unit_str(MAX_TX, SPEED_UNITS)
+
+    TOTAL_RX = unit_str(TOTAL_RX, DATA_UNITS)
+    TOTAL_TX = unit_str(TOTAL_TX, DATA_UNITS)
 
     if TOTAL_GPU_RAM:
         TOTAL_GPU_RAM = unit_str(TOTAL_GPU_RAM, DATA_UNITS)
@@ -394,10 +409,11 @@ def graph(session, fname='plot'):
     plot(f"FS usage (100% = {TOTAL_FS})", f"{NAME_FS} usage (max = {MAX_USED_FS})",
          session, 4, space=space)
 
-    # Set scale for plots displayed in absolute units
-    plot(f"{NAME_IFACE} received (Mb/s)", f"{NAME_IFACE} data received (max = {MAX_RX})",
+    plot(f"{NAME_IFACE} received (Mb/s)",
+         f"{NAME_IFACE} data received (max = {MAX_RX}, total = {TOTAL_RX})",
          session, 5, space=space, autoscale=1.2)
-    plot(f"{NAME_IFACE} sent (Mb/s)", f"{NAME_IFACE} data sent (max = {MAX_TX})",
+    plot(f"{NAME_IFACE} sent (Mb/s)",
+         f"{NAME_IFACE} data sent (max = {MAX_TX}, total = {TOTAL_TX})",
          session, 6, space=space, autoscale=1.2)
 
     # GPU params
