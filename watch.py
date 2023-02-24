@@ -31,9 +31,13 @@ END_DATE = ""
 TOTAL_LOAD = 0.0
 MAX_USED_RAM = 0
 MAX_USED_FS = 0
+TOTAL_FS = 0
 MAX_TX = 0
 MAX_RX = 0
-TOTAL_FS = 0
+START_TX = 0
+START_RX = 0
+END_TX = 0
+END_RX = 0
 
 TOTAL_GPU_LOAD = 0.0
 TOTAL_GPU_RAM = 0
@@ -76,6 +80,15 @@ def read_table(f):
             table[header[i]].append(value)
 
     return table
+
+
+# Read received/sent bytes from a given interface's sys stats
+def read_iface_stats(iface):
+    with open(f"/sys/class/net/{iface}/statistics/rx_bytes") as f:
+        rx = scan(r"(\d+)", int, f.readline())
+    with open(f"/sys/class/net/{iface}/statistics/tx_bytes") as f:
+        tx = scan(r"(\d+)", int, f.readline())
+    return rx, tx
 
 
 # Initialize 'data.txt' where the data is dumped
@@ -137,6 +150,8 @@ def summarize(session):
     total_fs = TOTAL_FS * 1024 * 1024
     max_tx = MAX_TX / 128 # kB/s to Mb/s
     max_rx = MAX_RX / 128 # kB/s to Mb/s
+    total_tx = END_TX-START_TX
+    total_rx = END_RX-START_RX
 
     sdt = datetime.datetime.strptime(START_DATE, '%Y-%m-%d %H:%M:%S')
     edt = datetime.datetime.strptime(END_DATE, '%Y-%m-%d %H:%M:%S')
@@ -149,10 +164,12 @@ def summarize(session):
         f"max disk used: {max_used_fs:.2f} B",
         f"average load: {average_load:.2f} %",
         f"observed disk: {FS_NAME}",
-        f"max data received: {max_rx:.2f} Mb/s",
-        f"max data sent: {max_tx:.2f} Mb/s",
+        f"max received: {max_rx:.2f} Mb/s",
+        f"max sent: {max_tx:.2f} Mb/s",
         f"observed network: {IFACE_NAME}",
-        f"duration: {delta_t} seconds"
+        f"duration: {delta_t} seconds",
+        f"total received: {total_rx} b",
+        f"total sent: {total_tx} b"
     ]
 
     if TOTAL_GPU_RAM != 0:
@@ -174,13 +191,15 @@ def watch(session, fsdev, iface):
     global TOTAL_LOAD
     global MAX_USED_RAM
     global MAX_USED_FS
-    global MAX_TX
     global MAX_RX
+    global MAX_TX
     global TOTAL_FS
-    global TOTAL_RX
-    global TOTAL_TX
-    global FS_SAR_INDEX
+    global START_RX
+    global START_TX
+    global END_RX
+    global END_TX
     global TOTAL_RAM
+    global FS_SAR_INDEX
     global FS_NAME
     global IFACE_NAME
     global IFACE_SAR_INDEX
@@ -294,6 +313,9 @@ def watch(session, fsdev, iface):
                     IFACE_SAR_INDEX = maxj
         if IFACE_NAME is None:
             IFACE_NAME = net_data['IFACE'][IFACE_SAR_INDEX]
+        if START_RX <= 0 or START_TX <= 0:
+            START_RX, START_TX = read_iface_stats(IFACE_NAME)
+        END_RX, END_TX = read_iface_stats(IFACE_NAME)
         if MAX_RX < stof(net_data['rxkB/s'][IFACE_SAR_INDEX]):
             MAX_RX = stof(net_data['rxkB/s'][IFACE_SAR_INDEX])
         if MAX_TX < stof(net_data['txkB/s'][IFACE_SAR_INDEX]):
