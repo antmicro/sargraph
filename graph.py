@@ -508,8 +508,8 @@ def servis_graph(session, fname='plot', output_ext='ascii'):
     from servis import render_multiple_time_series_plot
     if output_ext == 'ascii':
         render_multiple_time_series_plot(
-            ydatas=ydata,
-            xdatas=[xdata_to_int] * NUMBER_OF_PLOTS,
+            ydatas=[[yd] for yd in ydata],
+            xdatas=[[xdata_to_int]] * NUMBER_OF_PLOTS,
             title=summary,
             subtitles=titles,
             xtitles=['time'] * NUMBER_OF_PLOTS,
@@ -519,7 +519,8 @@ def servis_graph(session, fname='plot', output_ext='ascii'):
             y_ranges=y_ranges,
             outpath=Path(fname),
             trimxvalues=False,
-            figsize=(90, 70)
+            bins=0,
+            figsize=(900, 700)
         )
     elif output_ext == 'html':
         converted_labels = convert_labels_to_tags(labels)
