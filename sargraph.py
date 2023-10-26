@@ -16,12 +16,14 @@ from common import *
 
 # Declare and parse command line flags
 parser = argparse.ArgumentParser()
-parser.add_argument('session', metavar='SESSION-NAME', type=str, nargs='?', default=None,                  help='sargraph session name')
-parser.add_argument('command', metavar='COMMAND',      type=str, nargs='*',                                help='send command')
-parser.add_argument('-f',      metavar='DEVICE-NAME',  type=str, nargs='?', default=None,   dest='fsdev',  help='observe a chosen filesystem')
-parser.add_argument('-m',      metavar='MOUNT-DIR',    type=str, nargs='?', default=None,   dest='fspath', help='observe a chosen filesystem')
-parser.add_argument('-n',      metavar='IFACE-NAME',   type=str, nargs='?', default=None,   dest='iface',  help='observe chosen network iface')
-parser.add_argument('-o',      metavar='OUTPUT-NAME',  type=str, nargs='?', default='data', dest='name',   help='set output base names')
+parser.add_argument('session', metavar='SESSION-NAME', type=str, nargs='?', default=None,                     help='sargraph session name')
+parser.add_argument('command', metavar='COMMAND',      type=str, nargs='*',                                   help='send command')
+parser.add_argument('-f',      metavar='DEVICE-NAME',  type=str, nargs='?', default=None,      dest='fsdev',  help='observe a chosen filesystem')
+parser.add_argument('-m',      metavar='MOUNT-DIR',    type=str, nargs='?', default=None,      dest='fspath', help='observe a chosen filesystem')
+parser.add_argument('-n',      metavar='IFACE-NAME',   type=str, nargs='?', default=None,      dest='iface',  help='observe chosen network iface')
+parser.add_argument('-o',      metavar='OUTPUT-NAME',  type=str, nargs='?', default='data',    dest='name',   help='set output base names')
+parser.add_argument('-t',      metavar='TMPFS-COLOR',  type=str, nargs='?', default='#f2c71b', dest='tmpfs',  help='set tmpfs plot color' )
+parser.add_argument('-c',      metavar='CACHE-COLOR',  type=str, nargs='?', default='#ee7af0', dest='cache',  help='set cache plot color' )
 args = parser.parse_args()
 
 def send(sid, msg):
@@ -49,7 +51,7 @@ if args.session is None:
         if not args.fsdev:
             fail(f"no device is mounted on {args.fspath}")
 
-    watch.watch(args.name, args.fsdev, args.iface)
+    watch.watch(args.name, args.fsdev, args.iface, args.tmpfs, args.cache)
     sys.exit(0)
 
 # Now handle the commands
@@ -108,8 +110,8 @@ elif cmd[0] == 'save':
         send(sid, f"command:s:{cmd[1]}")
 elif cmd[0] == 'plot':
     if len(cmd) < 2:
-        graph.graph(sid)
+        graph.graph(sid, args.tmpfs, args.cache)
     else:
-        graph.graph(sid, cmd[1])
+        graph.graph(sid, args.tmpfs, args.cache, cmd[1])
 else:
     fail(f"unknown command '{cmd[0]}'")

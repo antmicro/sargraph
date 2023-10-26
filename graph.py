@@ -107,7 +107,26 @@ def plot(ylabel, title, session, column, space=3, autoscale=None):
     g(f"set title \"{{/:Bold {title}}}" + ("\\n" * space) + "\"")
     g(f"plot '{session}.txt' using 1:{column}:{column} title 'cpu' with boxes palette")
 
-
+def plot_stacked(ylabel, title, session, column, tmpfs_color, other_cache_color, space=3, autoscale=None):
+    if autoscale is None:
+        g("set yrange [0:100]")
+        g("set cbrange [0:100]")
+    else:
+        g("unset xdata")
+        g("set yrange [0:*]")
+        g(f"stats '{session}.txt' using {column}")
+        g(f"set yrange [0:STATS_max*{autoscale}]")
+        g(f"set cbrange [0:STATS_max*{autoscale}]")
+        g("set xdata time")
+    g(f"set ylabel '{ylabel}'")
+    g(f"set title \"{{/:Bold {title}}}" + ("\\n" * space) + "\"")
+    g('set style data histograms')
+    g('set style histogram rowstacked')
+    g('set key reverse below Left width -25')
+    g(f"plot '{session}.txt' using 1:($8 + ${column}):{column} title 'RAM' with boxes palette, \
+      '' using 1:8 with boxes title 'tmpfs' lc rgb '{tmpfs_color}', \
+      '' using 1:($8 - $7) with boxes title 'Other cache (freed automatically)' lc rgb '{other_cache_color}'")
+    g('unset key')
 # Read additional information from 'data.txt' comments
 def read_comments(session):
     global START_DATE
@@ -267,7 +286,7 @@ def read_comments(session):
     DURATION = unit_str(DURATION, TIME_UNITS, 60)
 
 
-def graph(session, fname='plot'):
+def graph(session, tmpfs_color, other_cache_color, fname='plot'):
     global OUTPUT_TYPE
     global OUTPUT_EXT
 
@@ -404,8 +423,8 @@ def graph(session, fname='plot'):
     # Set scale for plots displayed in relative units (%)
     plot("CPU load (%)",
          f"CPU load (average = {AVERAGE_LOAD:.2f} %)", session, 2, space=space)
-    plot(f"RAM usage (100% = {TOTAL_RAM})",
-         f"RAM usage (max = {MAX_USED_RAM})", session, 3, space=space)
+    plot_stacked(f"RAM usage (100% = {TOTAL_RAM})",
+         f"RAM usage (max = {MAX_USED_RAM})", session, 3, tmpfs_color, other_cache_color, space=space)
     plot(f"FS usage (100% = {TOTAL_FS})", f"{NAME_FS} usage (max = {MAX_USED_FS})",
          session, 4, space=space)
 

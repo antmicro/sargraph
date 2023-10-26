@@ -184,7 +184,7 @@ def summarize(session):
 
 
 # Run sar and gather data from it
-def watch(session, fsdev, iface):
+def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
     global SAMPLE_NUMBER
     global START_DATE
     global END_DATE
@@ -215,6 +215,7 @@ def watch(session, fsdev, iface):
     my_env = os.environ
     my_env["S_TIME_FORMAT"] = "ISO"
     p = run_or_fail("sar", "-F", "-u", "-r", "-n", "DEV", "1", stdout=subprocess.PIPE, env=my_env)
+    p2 = run_or_fail("while true; do df -t tmpfs --output=used | awk '{sum+=$1} END {print sum}'; sleep 1; done", shell=True, stdout=subprocess.PIPE, env=my_env)
     # subprocess for GPU data fetching in the background
     try:
         pgpu = subprocess.Popen(
@@ -257,9 +258,9 @@ def watch(session, fsdev, iface):
                     if label_line == "none":
                         pass
                     elif label_line:
-                        graph.graph(session, label_line)
+                        graph.graph(session, tmpfs_color, other_cache_color, label_line)
                     elif not dont_plot:
-                        graph.graph(session)
+                        graph.graph(session, tmpfs_color, other_cache_color)
                     dont_plot = True
                     die = 1
                     break
@@ -271,9 +272,9 @@ def watch(session, fsdev, iface):
                     if label_line != "none":
                         summarize(session)
                     if not label_line:
-                        graph.graph(session)
+                        graph.graph(session, tmpfs_color, other_cache_color)
                     else:
-                        graph.graph(session, label_line)
+                        graph.graph(session, tmpfs_color, other_cache_color, label_line)
             elif label_line.startswith('label:'):
                 label_line = label_line[len('label:'):]
                 with open(f"{session}.txt", "a") as f:
@@ -294,10 +295,14 @@ def watch(session, fsdev, iface):
 
         # Read and process RAM data
         ram_data = read_table(p.stdout)
+        tmpfs_data = p2.stdout.readline().decode('utf-8')
+        while p2.poll():
+            tmpfs_data = p2.stdout.readline().decode('utf-8')
+
         if TOTAL_RAM == 0:
             TOTAL_RAM = (int(ram_data['kbmemused'][0]) + int(ram_data['kbmemfree'][0]))
-        if MAX_USED_RAM < int(ram_data['kbmemused'][0]):
-            MAX_USED_RAM = int(ram_data['kbmemused'][0])
+        if MAX_USED_RAM < int(ram_data['kbmemused'][0]) + int(ram_data['kbcached'][0]):
+            MAX_USED_RAM = int(ram_data['kbmemused'][0]) + int(ram_data['kbcached'][0])
 
         # Read and process network data
         net_data = read_table(p.stdout)
@@ -358,7 +363,9 @@ def watch(session, fsdev, iface):
                 ram_data['%memused'][0],
                 fs_data['%fsused'][FS_SAR_INDEX],
                 stof(net_data['rxkB/s'][IFACE_SAR_INDEX])/128, # kB/s to Mb/s
-                stof(net_data['txkB/s'][IFACE_SAR_INDEX])/128 # kB/s to Mb/s
+                stof(net_data['txkB/s'][IFACE_SAR_INDEX])/128, # kB/s to Mb/s
+                f'{100*int(tmpfs_data)/TOTAL_RAM:.2f}',
+                f'{100*int(ram_data["kbcached"][0])/TOTAL_RAM:.2f}'
             ]
             if pgpu and TOTAL_GPU_RAM != 0:
                 line.extend([
