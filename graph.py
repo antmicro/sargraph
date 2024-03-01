@@ -438,9 +438,9 @@ def graph(session, tmpfs_color, other_cache_color, fname='plot'):
     # GPU params
     if TOTAL_GPU_RAM != 0:
         plot("GPU load (%)",
-             f"GPU load (average = {AVERAGE_GPU_LOAD} %)", session, 7, space=space)
+             f"GPU load (average = {AVERAGE_GPU_LOAD} %)", session, 9, space=space)
         plot(f"GPU RAM usage (100% = {TOTAL_GPU_RAM})",
-             f"GPU RAM usage (max = {MAX_USED_GPU_RAM})", session, 8, space=space)
+             f"GPU RAM usage (max = {MAX_USED_GPU_RAM})", session, 10, space=space)
 
     g("unset multiplot")
     g("unset output")
