@@ -374,7 +374,7 @@ def graph(session, tmpfs_color, other_cache_color, fname='plot'):
     title_machine = f"Running on {{/:Bold {HOST}}} \@ {{/:Bold {UNAME}}}, {{/:Bold {CPUS}}} threads x {{/:Bold {CPU_NAME}}}"
     title_specs = f"Total ram: {{/:Bold {TOTAL_RAM}}}, Total disk space: {{/:Bold {TOTAL_FS}}}"
     if TOTAL_GPU_RAM != 0:
-        title_gpu = f"\\nGPU:  {{/:Bold {GPU_NAME}}} (driver {{/:Bold {GPU_DRIVER}}}, total ram: {{/:Bold {TOTAL_GPU_RAM}}}"
+        title_gpu = f"\\nGPU:  {{/:Bold {GPU_NAME}}} (driver {{/:Bold {GPU_DRIVER}}}, total ram: {{/:Bold {TOTAL_GPU_RAM}}})"
     else:
         title_gpu = ""
     title_times = f"Duration: {{/:Bold {START_DATE}}} .. {{/:Bold {END_DATE}}} ({DURATION})"
