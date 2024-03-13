@@ -124,7 +124,7 @@ def plot_stacked(ylabel, title, session, column, tmpfs_color, other_cache_color,
     g('set style histogram rowstacked')
     g('set key reverse below Left width -25')
     g(f"plot '{session}.txt' using 1:($8 + ${column}):{column} title 'RAM' with boxes palette, \
-      '' using 1:8 with boxes title 'tmpfs' lc rgb '{tmpfs_color}', \
+      '' using 1:8 with boxes title 'Shared mem' lc rgb '{tmpfs_color}', \
       '' using 1:($8 - $7) with boxes title 'Other cache (freed automatically)' lc rgb '{other_cache_color}'")
     g('unset key')
 # Read additional information from 'data.txt' comments

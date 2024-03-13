@@ -214,8 +214,8 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
 
     my_env = os.environ
     my_env["S_TIME_FORMAT"] = "ISO"
-    p = run_or_fail("sar", "-F", "-u", "-r", "-n", "DEV", "1", stdout=subprocess.PIPE, env=my_env)
-    p2 = run_or_fail("while true; do df -t tmpfs --output=used | awk '{sum+=$1} END {print sum}'; sleep 1; done", shell=True, stdout=subprocess.PIPE, env=my_env)
+    p = run_or_fail("sar", "-F", "-u", "-r", "ALL", "-n", "DEV", "1", stdout=subprocess.PIPE, env=my_env)
+    p2 = run_or_fail("while true; do cat /proc/meminfo | grep Shmem\: | awk '{print $2}'; sleep 1; done", shell=True, stdout=subprocess.PIPE, env=my_env)
     # subprocess for GPU data fetching in the background
     try:
         pgpu = subprocess.Popen(
