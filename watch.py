@@ -15,6 +15,9 @@ import signal
 import subprocess
 import sys
 import time
+import psutil
+import sched
+from threading import Thread
 
 import graph
 
@@ -42,6 +45,7 @@ END_RX = 0
 TOTAL_GPU_LOAD = 0.0
 TOTAL_GPU_RAM = 0
 MAX_USED_GPU_RAM = 0
+RAM_DATA_FILE_HANDLE = None
 
 FS_NAME = None
 FS_SAR_INDEX = None
@@ -136,6 +140,9 @@ def initialize(session, machine):
     with open(f"{session}.txt", "w") as f:
         print(*header, sep=", ", file=f)
 
+    # clear the contents of the ramdata file
+    open(f"{session}_ramdata.txt", 'w').close()
+
 
 # Add a summary comment to 'data.txt'
 def summarize(session):
@@ -182,6 +189,24 @@ def summarize(session):
     with open(f"{session}.txt", "a") as f:
         print(*summary, sep=", ", file=f)
 
+def get_meminfo(scheduler):
+    global MAX_USED_RAM
+    global RAM_DATA_FILE_HANDLE
+    scheduler.enter(0.1, 1, get_meminfo, (scheduler,))
+    now = datetime.datetime.now()
+    date = now.strftime("%Y-%m-%d")
+    daytime = now.strftime("%H:%M:%S.%f")
+    ram_data = psutil.virtual_memory()
+    if (ram_data.total - ram_data.free) // 1024 > MAX_USED_RAM:
+        MAX_USED_RAM = (ram_data.total - ram_data.free) // 1024
+    line = [
+        date + "-" + daytime,
+        100 * ram_data.free / ram_data.total,
+        100 * ram_data.cached / ram_data.total,
+        100 * ram_data.used / ram_data.total,
+        100 * ram_data.shared / ram_data.total,
+    ]
+    print(*line, file=RAM_DATA_FILE_HANDLE)
 
 # Run sar and gather data from it
 def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
@@ -206,6 +231,11 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
     global TOTAL_GPU_LOAD
     global TOTAL_GPU_RAM
     global MAX_USED_GPU_RAM
+    global RAM_DATA_FILE_HANDLE
+
+    if RAM_DATA_FILE_HANDLE == None:
+        RAM_DATA_FILE_HANDLE = open(f"{session}_ramdata.txt", 'a');
+
 
     global die
 
@@ -214,8 +244,13 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
 
     my_env = os.environ
     my_env["S_TIME_FORMAT"] = "ISO"
-    p = run_or_fail("sar", "-F", "-u", "-r", "ALL", "-n", "DEV", "1", stdout=subprocess.PIPE, env=my_env)
-    p2 = run_or_fail("while true; do cat /proc/meminfo | grep Shmem\: | awk '{print $2}'; sleep 1; done", shell=True, stdout=subprocess.PIPE, env=my_env)
+    p = run_or_fail("sar", "-F", "-u", "-n", "DEV", "1", stdout=subprocess.PIPE, env=my_env)
+
+    s = sched.scheduler(time.time, time.sleep)
+    mem_ev = s.enter(0, 1, get_meminfo, (s,))
+    thread = Thread(target = s.run)
+    thread.start()
+
     # subprocess for GPU data fetching in the background
     try:
         pgpu = subprocess.Popen(
@@ -293,16 +328,8 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
         TOTAL_LOAD += stof(cpu_data["%user"][0])
         SAMPLE_NUMBER += 1
 
-        # Read and process RAM data
-        ram_data = read_table(p.stdout)
-        tmpfs_data = p2.stdout.readline().decode('utf-8')
-        while p2.poll():
-            tmpfs_data = p2.stdout.readline().decode('utf-8')
-
         if TOTAL_RAM == 0:
-            TOTAL_RAM = (int(ram_data['kbmemused'][0]) + int(ram_data['kbmemfree'][0]))
-        if MAX_USED_RAM < int(ram_data['kbmemused'][0]) + int(ram_data['kbcached'][0]):
-            MAX_USED_RAM = int(ram_data['kbmemused'][0]) + int(ram_data['kbcached'][0])
+            TOTAL_RAM = psutil.virtual_memory().total // 1024
 
         # Read and process network data
         net_data = read_table(p.stdout)
@@ -360,12 +387,9 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
             line = [
                 timestamp,
                 cpu_data['%user'][0],
-                ram_data['%memused'][0],
                 fs_data['%fsused'][FS_SAR_INDEX],
                 stof(net_data['rxkB/s'][IFACE_SAR_INDEX])/128, # kB/s to Mb/s
                 stof(net_data['txkB/s'][IFACE_SAR_INDEX])/128, # kB/s to Mb/s
-                f'{100*int(tmpfs_data)/TOTAL_RAM:.2f}',
-                f'{100*int(ram_data["kbcached"][0])/TOTAL_RAM:.2f}'
             ]
             if pgpu and TOTAL_GPU_RAM != 0:
                 line.extend([
@@ -376,6 +400,9 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
 
         if die:
             break
+
+    list(map(s.cancel, s.queue))
+    thread.join()
 
     # This runs if we were stopped by SIGTERM and no plot was made so far
     if not dont_plot:

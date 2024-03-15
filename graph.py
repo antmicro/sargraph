@@ -48,6 +48,7 @@ HOST = socket.gethostname()
 
 # The number of plots on the graph
 NUMBER_OF_PLOTS = 5
+RAM_DATA_POSITION = 1
 
 # The default format
 OUTPUT_TYPE = "pngcairo"
@@ -114,7 +115,7 @@ def plot_stacked(ylabel, title, session, column, tmpfs_color, other_cache_color,
     else:
         g("unset xdata")
         g("set yrange [0:*]")
-        g(f"stats '{session}.txt' using {column}")
+        g(f"stats '{session}_ramdata.txt' using {column}")
         g(f"set yrange [0:STATS_max*{autoscale}]")
         g(f"set cbrange [0:STATS_max*{autoscale}]")
         g("set xdata time")
@@ -123,9 +124,9 @@ def plot_stacked(ylabel, title, session, column, tmpfs_color, other_cache_color,
     g('set style data histograms')
     g('set style histogram rowstacked')
     g('set key reverse below Left width -25')
-    g(f"plot '{session}.txt' using 1:($8 + ${column}):{column} title 'RAM' with boxes palette, \
-      '' using 1:8 with boxes title 'Shared mem' lc rgb '{tmpfs_color}', \
-      '' using 1:($8 - $7) with boxes title 'Other cache (freed automatically)' lc rgb '{other_cache_color}'")
+    g(f"plot '{session}_ramdata.txt' using 1:($3 + ${column}):{column} title 'RAM' with boxes palette, \
+      '' using 1:5 with boxes title 'Shared mem' lc rgb '{tmpfs_color}', \
+      '' using 1:($3 - $5) with boxes title 'Other cache (freed automatically)' lc rgb '{other_cache_color}'")
     g('unset key')
 # Read additional information from 'data.txt' comments
 def read_comments(session):
@@ -424,23 +425,23 @@ def graph(session, tmpfs_color, other_cache_color, fname='plot'):
     plot("CPU load (%)",
          f"CPU load (average = {AVERAGE_LOAD:.2f} %)", session, 2, space=space)
     plot_stacked(f"RAM usage (100% = {TOTAL_RAM})",
-         f"RAM usage (max = {MAX_USED_RAM})", session, 3, tmpfs_color, other_cache_color, space=space)
+         f"RAM usage (max = {MAX_USED_RAM})", session, 4, tmpfs_color, other_cache_color, space=space)
     plot(f"FS usage (100% = {TOTAL_FS})", f"{NAME_FS} usage (max = {MAX_USED_FS})",
-         session, 4, space=space)
+         session, 3, space=space)
 
     plot(f"{NAME_IFACE} received (Mb/s)",
          f"{NAME_IFACE} data received (max = {MAX_RX}, total = {TOTAL_RX})",
-         session, 5, space=space, autoscale=1.2)
+         session, 4, space=space, autoscale=1.2)
     plot(f"{NAME_IFACE} sent (Mb/s)",
          f"{NAME_IFACE} data sent (max = {MAX_TX}, total = {TOTAL_TX})",
-         session, 6, space=space, autoscale=1.2)
+         session, 5, space=space, autoscale=1.2)
 
     # GPU params
     if TOTAL_GPU_RAM != 0:
         plot("GPU load (%)",
-             f"GPU load (average = {AVERAGE_GPU_LOAD} %)", session, 9, space=space)
+             f"GPU load (average = {AVERAGE_GPU_LOAD} %)", session, 6, space=space)
         plot(f"GPU RAM usage (100% = {TOTAL_GPU_RAM})",
-             f"GPU RAM usage (max = {MAX_USED_GPU_RAM})", session, 10, space=space)
+             f"GPU RAM usage (max = {MAX_USED_GPU_RAM})", session, 7, space=space)
 
     g("unset multiplot")
     g("unset output")
@@ -449,6 +450,7 @@ def graph(session, tmpfs_color, other_cache_color, fname='plot'):
 
 def read_data(session):
     xdata = list()
+    xdata_ram = list()
     ydata = [[] for _ in range(NUMBER_OF_PLOTS)]
     with open(f"{session}.txt", "r") as f:
         for line in f:
@@ -457,8 +459,17 @@ def read_data(session):
                 date = datetime.datetime.strptime(line[0], '%Y-%m-%d-%H:%M:%S')
                 xdata.append(date)
                 for i in range(NUMBER_OF_PLOTS):
-                    ydata[i].append(stof(line[i+1]))
-    return (xdata, ydata)
+                    if i != RAM_DATA_POSITION:
+                        ydata[i].append(stof(line[i+1 - int(i > RAM_DATA_POSITION)]))
+    with open(f"{session}_ramdata.txt", 'r') as f:
+        for line in f:
+            if(line[0] != '#'):
+                line = line.split(" ")
+                date = datetime.datetime.strptime(line[0], '%Y-%m-%d-%H:%M:%S.%f')
+                xdata_ram.append(date)
+                ydata[RAM_DATA_POSITION].append(100-stof(line[1]))
+
+    return (xdata, xdata_ram, ydata)
 
 
 def convert_labels_to_tags(labels):
@@ -475,7 +486,7 @@ def convert_labels_to_tags(labels):
 
 def servis_graph(session, fname='plot', output_ext='ascii'):
     read_comments(session)
-    xdata, ydata = read_data(session)
+    xdata, xdata_ram, ydata = read_data(session)
     titles = [f"""CPU load (average = {AVERAGE_LOAD} %)""",
               f"""RAM usage (max = {MAX_USED_RAM})""",
               f"""{NAME_FS} usage (max = {MAX_USED_FS})""",
@@ -526,9 +537,16 @@ def servis_graph(session, fname='plot', output_ext='ascii'):
 
     from servis import render_multiple_time_series_plot
     if output_ext == 'ascii':
+        xdatas = [[xdata_to_int]] * (NUMBER_OF_PLOTS - 1)
+        xdatas.insert(1, [[
+            int(timestamp.replace(
+            tzinfo=datetime.timezone.utc).timestamp()*1000)/1000
+            for timestamp in xdata_ram
+        ]])
+
         render_multiple_time_series_plot(
             ydatas=[[yd] for yd in ydata],
-            xdatas=[[xdata_to_int]] * NUMBER_OF_PLOTS,
+            xdatas=xdatas,
             title=summary,
             subtitles=titles,
             xtitles=['time'] * NUMBER_OF_PLOTS,
@@ -543,9 +561,15 @@ def servis_graph(session, fname='plot', output_ext='ascii'):
         )
     elif output_ext == 'html':
         converted_labels = convert_labels_to_tags(labels)
+        xdatas = [
+            int(timestamp.replace(
+            tzinfo=datetime.timezone.utc).timestamp()*1000)/1000
+            for timestamp in xdata_ram
+        ] 
+        xdatas = [xdata_to_int] + [xdatas] + [xdata_to_int * (NUMBER_OF_PLOTS - 2)]
         render_multiple_time_series_plot(
             ydatas=ydata,
-            xdatas=[xdata_to_int] * NUMBER_OF_PLOTS,
+            xdatas=xdatas,
             title=summary,
             subtitles=titles,
             xtitles=['time'] * NUMBER_OF_PLOTS,
