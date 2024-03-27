@@ -69,12 +69,15 @@ class ThreadSafeFileWriter:
                 file.write(data + '\n')
 
 # Read a single table from sar output
-def read_table(f):
+def read_table(psar):
     # Find the header
+    f = psar.stdout 
     while True:
         header = f.readline().decode().split()
         if len(header) > 0:
             break
+        if psar.poll() is not None:
+            raise ValueError("The subprocess has exited")
 
     # The first columns is always just time
     header[0] = 'time'
@@ -88,6 +91,8 @@ def read_table(f):
         row = f.readline().decode().split()
         if len(row) <= 0:
             break
+        if psar.poll() is not None:
+            raise ValueError("The subprocess has exited")
 
         for i, value in enumerate(row):
             table[header[i]].append(value)
@@ -249,7 +254,8 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
 
     my_env = os.environ
     my_env["S_TIME_FORMAT"] = "ISO"
-    p = run_or_fail("sar", "-F", "-u", "-n", "DEV", "1", stdout=subprocess.PIPE, env=my_env)
+
+    psar = run_or_fail("sar", "-F", "-u", "-n", "DEV", "1", stdout=subprocess.PIPE, env=my_env)
 
     s = sched.scheduler(time.time, time.sleep)
     mem_ev = s.enter(0, 1, get_meminfo, (s,))
@@ -266,9 +272,9 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
     except:
         pgpu = None
 
-    machine = p.stdout.readline().decode()
+    machine = psar.stdout.readline().decode()
     initialize(session, machine)
-    p.stdout.readline()
+    psar.stdout.readline()
 
     signal.signal(signal.SIGTERM, kill_handler)
 
@@ -276,7 +282,7 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
     flags = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
     fcntl.fcntl(sys.stdin, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
-    readlist = [p.stdout, sys.stdin]
+    readlist = [psar.stdout, sys.stdin]
     if pgpu:
         readlist.append(pgpu.stdout)
     # Gather data from sar output
@@ -322,65 +328,69 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
                 with open(f"{session}.txt", "a") as f:
                     timestamp = now.strftime("%Y-%m-%d-%H:%M:%S")
                     print(f"# {timestamp} label: {label_line}", file=f)
-        if p.stdout not in rlist:
+        if psar.stdout not in rlist:
             continue
 
         date = now.strftime("%Y-%m-%d")
         daytime = now.strftime("%H:%M:%S")
 
         # Read and process CPU data
-        cpu_data = read_table(p.stdout)
-        if START_DATE == "":
-            START_DATE = date + " " + daytime
-        TOTAL_LOAD += stof(cpu_data["%user"][0])
-        SAMPLE_NUMBER += 1
+        try:
+            cpu_data = read_table(psar)
+            if START_DATE == "":
+                START_DATE = date + " " + daytime
+            TOTAL_LOAD += stof(cpu_data["%user"][0])
+            SAMPLE_NUMBER += 1
 
-        if TOTAL_RAM == 0:
-            TOTAL_RAM = psutil.virtual_memory().total // 1024
+            if TOTAL_RAM == 0:
+                TOTAL_RAM = psutil.virtual_memory().total // 1024
 
-        # Read and process network data
-        net_data = read_table(p.stdout)
-        if IFACE_SAR_INDEX is None:
-            if iface:
-                IFACE_SAR_INDEX = net_data['IFACE'].index(iface)
-            else:
-                maxj, maxv = 0, 0
-                for j, used in enumerate(net_data['IFACE']):
-                    v = stof(net_data['rxkB/s'][j])
-                    if maxv < v:
-                        maxj, maxv = j, v
-                    IFACE_SAR_INDEX = maxj
-        if IFACE_NAME is None:
-            IFACE_NAME = net_data['IFACE'][IFACE_SAR_INDEX]
-        if START_RX <= 0 or START_TX <= 0:
-            START_RX, START_TX = read_iface_stats(IFACE_NAME)
-        END_RX, END_TX = read_iface_stats(IFACE_NAME)
-        if MAX_RX < stof(net_data['rxkB/s'][IFACE_SAR_INDEX]):
-            MAX_RX = stof(net_data['rxkB/s'][IFACE_SAR_INDEX])
-        if MAX_TX < stof(net_data['txkB/s'][IFACE_SAR_INDEX]):
-            MAX_TX = stof(net_data['txkB/s'][IFACE_SAR_INDEX])
+            # Read and process network data
+            net_data = read_table(psar)
+            if IFACE_SAR_INDEX is None:
+                if iface:
+                    IFACE_SAR_INDEX = net_data['IFACE'].index(iface)
+                else:
+                    maxj, maxv = 0, 0
+                    for j, used in enumerate(net_data['IFACE']):
+                        v = stof(net_data['rxkB/s'][j])
+                        if maxv < v:
+                            maxj, maxv = j, v
+                        IFACE_SAR_INDEX = maxj
+            if IFACE_NAME is None:
+                IFACE_NAME = net_data['IFACE'][IFACE_SAR_INDEX]
+            if START_RX <= 0 or START_TX <= 0:
+                START_RX, START_TX = read_iface_stats(IFACE_NAME)
+            END_RX, END_TX = read_iface_stats(IFACE_NAME)
+            if MAX_RX < stof(net_data['rxkB/s'][IFACE_SAR_INDEX]):
+                MAX_RX = stof(net_data['rxkB/s'][IFACE_SAR_INDEX])
+            if MAX_TX < stof(net_data['txkB/s'][IFACE_SAR_INDEX]):
+                MAX_TX = stof(net_data['txkB/s'][IFACE_SAR_INDEX])
 
-        # Read and process FS data
-        fs_data = read_table(p.stdout)
-        if FS_SAR_INDEX is None:
-            if fsdev:
-                FS_SAR_INDEX = fs_data['FILESYSTEM'].index(fsdev)
-            else:
-                maxj, maxv = 0, 0
-                for j, free in enumerate(fs_data['MBfsfree']):
-                    v = stof(fs_data['MBfsfree'][j]) + stof(fs_data['MBfsused'][j])
-                    if maxv < v:
-                        maxj, maxv = j, v
-                FS_SAR_INDEX = maxj
-        if FS_NAME is None:
-            FS_NAME = fs_data["FILESYSTEM"][FS_SAR_INDEX]
-        if TOTAL_FS == 0:
-            TOTAL_FS = (stof(fs_data['MBfsused'][FS_SAR_INDEX]) + stof(fs_data['MBfsfree'][FS_SAR_INDEX]))
-        if MAX_USED_FS < int(fs_data['MBfsused'][FS_SAR_INDEX]):
-            MAX_USED_FS = int(fs_data['MBfsused'][FS_SAR_INDEX])
+            # Read and process FS data
+            fs_data = read_table(psar)
+            if FS_SAR_INDEX is None:
+                if fsdev:
+                    FS_SAR_INDEX = fs_data['FILESYSTEM'].index(fsdev)
+                else:
+                    maxj, maxv = 0, 0
+                    for j, free in enumerate(fs_data['MBfsfree']):
+                        v = stof(fs_data['MBfsfree'][j]) + stof(fs_data['MBfsused'][j])
+                        if maxv < v:
+                            maxj, maxv = j, v
+                    FS_SAR_INDEX = maxj
+            if FS_NAME is None:
+                FS_NAME = fs_data["FILESYSTEM"][FS_SAR_INDEX]
+            if TOTAL_FS == 0:
+                TOTAL_FS = (stof(fs_data['MBfsused'][FS_SAR_INDEX]) + stof(fs_data['MBfsfree'][FS_SAR_INDEX]))
+            if MAX_USED_FS < int(fs_data['MBfsused'][FS_SAR_INDEX]):
+                MAX_USED_FS = int(fs_data['MBfsused'][FS_SAR_INDEX])
 
-        END_DATE = date + " " + daytime
-        timestamp = date + "-" + daytime
+            END_DATE = date + " " + daytime
+            timestamp = date + "-" + daytime
+        except ValueError as e:
+            print("Sar process has exited - quitting sargraph")
+            break
 
         if pgpu and pgpu.stdout in rlist:
             line = pgpu.stdout.readline().decode('utf-8')
