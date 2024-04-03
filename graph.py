@@ -13,6 +13,7 @@ import subprocess
 import time
 from common import *
 from pathlib import Path
+import tempfile
 
 global gnuplot
 
@@ -64,6 +65,37 @@ if not is_version_ge(version, GNUPLOT_VERSION_EXPECTED):
     fail(
         f"gnuplot version too low. Need at least {GNUPLOT_VERSION_EXPECTED} found {version}")
 
+def split_data_file(session):
+    sar_data = []
+    psu_data = []
+
+    # Read the input file
+    with open(f"{session}.txt", 'r') as file:
+        in_summary = False
+        for line in file:
+            if line.startswith('#'):
+                sar_data.append(line.strip())
+            else:
+                if line.startswith('sar'):
+                    sar_data.append(line.split(' ', 1)[1].strip())
+                elif line.startswith('psu'):
+                    psu_data.append(line.split(' ', 1)[1].strip())
+
+    temp_dir = tempfile.mkdtemp()
+    with open(os.path.join(temp_dir, 'sar_data.txt'), 'w') as sar_data_file:
+        sar_data_file.write("\n".join(sar_data))
+        print(file=sar_data_file)
+
+    with open(os.path.join(temp_dir, 'psu_data.txt'), 'w') as psu_data_file:
+        psu_data_file.write("\n".join(psu_data))
+        print(file=psu_data_file)
+
+    # in order: sar file, mem file
+    return [
+        os.path.join(temp_dir, 'sar_data.txt'),
+        os.path.join(temp_dir, 'psu_data.txt')
+    ]
+
 
 # Run a command in a running gnuplot process
 def g(command):
@@ -93,29 +125,29 @@ def fix_size(size):
 
 
 # Plot a single column of values from data.txt
-def plot(ylabel, title, session, column, space=3, autoscale=None):
+def plot(ylabel, title, sar_file, column, space=3, autoscale=None):
     if autoscale is None:
         g("set yrange [0:100]")
         g("set cbrange [0:100]")
     else:
         g("unset xdata")
         g("set yrange [0:*]")
-        g(f"stats '{session}.txt' using {column}")
+        g(f"stats '{sar_file}' using {column}")
         g(f"set yrange [0:STATS_max*{autoscale}]")
         g(f"set cbrange [0:STATS_max*{autoscale}]")
         g("set xdata time")
     g(f"set ylabel '{ylabel}'")
     g(f"set title \"{{/:Bold {title}}}" + ("\\n" * space) + "\"")
-    g(f"plot '{session}.txt' using 1:{column}:{column} title 'cpu' with boxes palette")
+    g(f"plot '{sar_file}' using 1:{column}:{column} title 'cpu' with boxes palette")
 
-def plot_stacked(ylabel, title, session, column, tmpfs_color, other_cache_color, space=3, autoscale=None):
+def plot_stacked(ylabel, title, ram_file, column, tmpfs_color, other_cache_color, space=3, autoscale=None):
     if autoscale is None:
         g("set yrange [0:100]")
         g("set cbrange [0:100]")
     else:
         g("unset xdata")
         g("set yrange [0:*]")
-        g(f"stats '{session}_ramdata.txt' using {column}")
+        g(f"stats '{ram_data}' using {column}")
         g(f"set yrange [0:STATS_max*{autoscale}]")
         g(f"set cbrange [0:STATS_max*{autoscale}]")
         g("set xdata time")
@@ -124,12 +156,12 @@ def plot_stacked(ylabel, title, session, column, tmpfs_color, other_cache_color,
     g('set style data histograms')
     g('set style histogram rowstacked')
     g('set key reverse below Left width -25')
-    g(f"plot '{session}_ramdata.txt' using 1:($3 + ${column}):{column} title 'RAM' with boxes palette, \
+    g(f"plot '{ram_file}' using 1:($3 + ${column}):{column} title 'RAM' with boxes palette, \
       '' using 1:5 with boxes title 'Shared mem' lc rgb '{tmpfs_color}', \
       '' using 1:($3 - $5) with boxes title 'Other cache (freed automatically)' lc rgb '{other_cache_color}'")
     g('unset key')
 # Read additional information from 'data.txt' comments
-def read_comments(session):
+def read_comments(sar_file):
     global START_DATE
     global END_DATE
     global AVERAGE_LOAD
@@ -156,7 +188,7 @@ def read_comments(session):
 
     data_version = None
 
-    with open(f"{session}.txt", "r") as f:
+    with open(sar_file, "r") as f:
         for line in f:
             value = None
 
@@ -325,16 +357,17 @@ def graph(session, tmpfs_color, other_cache_color, fname='plot'):
 
     # Leave just the base name
     fname = cut_suffix(fname, f".{OUTPUT_EXT}")
+    sar_file, ram_file = split_data_file(session)
 
     # ASCII plots have their own routine
     if OUTPUT_TYPE == "ascii":
-        return servis_graph(session, fname)
+        return servis_graph(sar_file, ram_file, fname)
 
     # HTML plots have their own routine
     if OUTPUT_TYPE == "html":
-        return servis_graph(session, fname, "html")
+        return servis_graph(sar_file, ram_file, fname, "html")
 
-    read_comments(session)
+    read_comments(sar_file)
 
     gnuplot = run_or_fail("gnuplot", stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE)
@@ -423,36 +456,36 @@ def graph(session, tmpfs_color, other_cache_color, fname='plot'):
 
     # Set scale for plots displayed in relative units (%)
     plot("CPU load (%)",
-         f"CPU load (average = {AVERAGE_LOAD:.2f} %)", session, 2, space=space)
+         f"CPU load (average = {AVERAGE_LOAD:.2f} %)", sar_file, 2, space=space)
     plot_stacked(f"RAM usage (100% = {TOTAL_RAM})",
-         f"RAM usage (max = {MAX_USED_RAM})", session, 4, tmpfs_color, other_cache_color, space=space)
+         f"RAM usage (max = {MAX_USED_RAM})", ram_file, 4, tmpfs_color, other_cache_color, space=space)
     plot(f"FS usage (100% = {TOTAL_FS})", f"{NAME_FS} usage (max = {MAX_USED_FS})",
-         session, 3, space=space)
+         sar_file, 3, space=space)
 
     plot(f"{NAME_IFACE} received (Mb/s)",
          f"{NAME_IFACE} data received (max = {MAX_RX}, total = {TOTAL_RX})",
-         session, 4, space=space, autoscale=1.2)
+         sar_file, 4, space=space, autoscale=1.2)
     plot(f"{NAME_IFACE} sent (Mb/s)",
          f"{NAME_IFACE} data sent (max = {MAX_TX}, total = {TOTAL_TX})",
-         session, 5, space=space, autoscale=1.2)
+         sar_file, 5, space=space, autoscale=1.2)
 
     # GPU params
     if TOTAL_GPU_RAM != 0:
         plot("GPU load (%)",
-             f"GPU load (average = {AVERAGE_GPU_LOAD} %)", session, 6, space=space)
+             f"GPU load (average = {AVERAGE_GPU_LOAD} %)", sar_file, 6, space=space)
         plot(f"GPU RAM usage (100% = {TOTAL_GPU_RAM})",
-             f"GPU RAM usage (max = {MAX_USED_GPU_RAM})", session, 7, space=space)
+             f"GPU RAM usage (max = {MAX_USED_GPU_RAM})", sar_file, 7, space=space)
 
     g("unset multiplot")
     g("unset output")
     g("quit")
 
 
-def read_data(session):
+def read_data(sar_file, ram_file):
     xdata = list()
     xdata_ram = list()
     ydata = [[] for _ in range(NUMBER_OF_PLOTS)]
-    with open(f"{session}.txt", "r") as f:
+    with open(sar_file, "r") as f:
         for line in f:
             if(line[0] != '#'):
                 line = line.split(" ")
@@ -461,7 +494,7 @@ def read_data(session):
                 for i in range(NUMBER_OF_PLOTS):
                     if i != RAM_DATA_POSITION:
                         ydata[i].append(stof(line[i+1 - int(i > RAM_DATA_POSITION)]))
-    with open(f"{session}_ramdata.txt", 'r') as f:
+    with open(ram_file, 'r') as f:
         for line in f:
             if(line[0] != '#'):
                 line = line.split(" ")
@@ -484,9 +517,9 @@ def convert_labels_to_tags(labels):
     return tags
 
 
-def servis_graph(session, fname='plot', output_ext='ascii'):
-    read_comments(session)
-    xdata, xdata_ram, ydata = read_data(session)
+def servis_graph(sar_file, ram_file, fname='plot', output_ext='ascii'):
+    read_comments(sar_file)
+    xdata, xdata_ram, ydata = read_data(sar_file, ram_file)
     titles = [f"""CPU load (average = {AVERAGE_LOAD} %)""",
               f"""RAM usage (max = {MAX_USED_RAM})""",
               f"""{NAME_FS} usage (max = {MAX_USED_FS})""",

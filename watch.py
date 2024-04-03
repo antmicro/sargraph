@@ -17,7 +17,7 @@ import sys
 import time
 import psutil
 import sched
-from threading import Thread
+from threading import Thread, Lock
 
 import graph
 
@@ -45,7 +45,7 @@ END_RX = 0
 TOTAL_GPU_LOAD = 0.0
 TOTAL_GPU_RAM = 0
 MAX_USED_GPU_RAM = 0
-RAM_DATA_FILE_HANDLE = None
+DATA_FILE_HANDLE = None
 
 FS_NAME = None
 FS_SAR_INDEX = None
@@ -58,6 +58,15 @@ def kill_handler(a, b):
     global die
     die = 1
 
+class ThreadSafeFileWriter:
+    def __init__(self, filename):
+        self.filename = filename
+        self.lock = Lock()
+
+    def write(self, data):
+        with self.lock:
+            with open(self.filename, 'a') as file:
+                file.write(data + '\n')
 
 # Read a single table from sar output
 def read_table(f):
@@ -140,9 +149,6 @@ def initialize(session, machine):
     with open(f"{session}.txt", "w") as f:
         print(*header, sep=", ", file=f)
 
-    # clear the contents of the ramdata file
-    open(f"{session}_ramdata.txt", 'w').close()
-
 
 # Add a summary comment to 'data.txt'
 def summarize(session):
@@ -186,12 +192,11 @@ def summarize(session):
             f"average gpu load: {TOTAL_GPU_LOAD / SAMPLE_NUMBER:.2f} %"
         ])
 
-    with open(f"{session}.txt", "a") as f:
-        print(*summary, sep=", ", file=f)
+    DATA_FILE_HANDLE.write(", ".join([str(i) for i in summary]))
 
 def get_meminfo(scheduler):
     global MAX_USED_RAM
-    global RAM_DATA_FILE_HANDLE
+    global DATA_FILE_HANDLE
     scheduler.enter(0.1, 1, get_meminfo, (scheduler,))
     now = datetime.datetime.now()
     date = now.strftime("%Y-%m-%d")
@@ -206,7 +211,7 @@ def get_meminfo(scheduler):
         100 * ram_data.used / ram_data.total,
         100 * ram_data.shared / ram_data.total,
     ]
-    print(*line, file=RAM_DATA_FILE_HANDLE)
+    DATA_FILE_HANDLE.write(" ".join(["psu"]+[str(i) for i in line]))
 
 # Run sar and gather data from it
 def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
@@ -231,10 +236,10 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
     global TOTAL_GPU_LOAD
     global TOTAL_GPU_RAM
     global MAX_USED_GPU_RAM
-    global RAM_DATA_FILE_HANDLE
+    global DATA_FILE_HANDLE
 
-    if RAM_DATA_FILE_HANDLE == None:
-        RAM_DATA_FILE_HANDLE = open(f"{session}_ramdata.txt", 'a');
+    if DATA_FILE_HANDLE == None:
+        DATA_FILE_HANDLE = ThreadSafeFileWriter(f"{session}.txt");
 
 
     global die
@@ -289,6 +294,7 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
                 if label_line.startswith("q:"):
                     label_line = label_line[len("q:"):]
 
+                    list(map(s.cancel, s.queue))
                     summarize(session)
                     if label_line == "none":
                         pass
@@ -305,6 +311,7 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
                     dont_plot = True
 
                     if label_line != "none":
+                        list(map(s.cancel, s.queue))
                         summarize(session)
                     if not label_line:
                         graph.graph(session, tmpfs_color, other_cache_color)
@@ -383,20 +390,20 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
             if MAX_USED_GPU_RAM < curr_gpu_mem:
                 MAX_USED_GPU_RAM = curr_gpu_mem
             TOTAL_GPU_LOAD += curr_gpu_util
-        with open(f"{session}.txt", "a") as f:
-            line = [
-                timestamp,
-                cpu_data['%user'][0],
-                fs_data['%fsused'][FS_SAR_INDEX],
-                stof(net_data['rxkB/s'][IFACE_SAR_INDEX])/128, # kB/s to Mb/s
-                stof(net_data['txkB/s'][IFACE_SAR_INDEX])/128, # kB/s to Mb/s
-            ]
-            if pgpu and TOTAL_GPU_RAM != 0:
-                line.extend([
-                    f'{curr_gpu_util:.2f}',
-                    f'{curr_gpu_mem / TOTAL_GPU_RAM * 100.0:.2f}'
-                ])
-            print(*line, file=f)
+
+        line = [
+            timestamp,
+            cpu_data['%user'][0],
+            fs_data['%fsused'][FS_SAR_INDEX],
+            stof(net_data['rxkB/s'][IFACE_SAR_INDEX])/128, # kB/s to Mb/s
+            stof(net_data['txkB/s'][IFACE_SAR_INDEX])/128, # kB/s to Mb/s
+        ]
+        if pgpu and TOTAL_GPU_RAM != 0:
+            line.extend([
+                f'{curr_gpu_util:.2f}',
+                f'{curr_gpu_mem / TOTAL_GPU_RAM * 100.0:.2f}'
+            ])
+        DATA_FILE_HANDLE.write(" ".join(["sar"]+[str(i) for i in line]))
 
         if die:
             break
