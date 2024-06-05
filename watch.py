@@ -71,7 +71,7 @@ class ThreadSafeFileWriter:
 # Read a single table from sar output
 def read_table(psar):
     # Find the header
-    f = psar.stdout 
+    f = psar.stdout
     while True:
         header = f.readline().decode().split()
         if len(header) > 0:
@@ -424,4 +424,4 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
     # This runs if we were stopped by SIGTERM and no plot was made so far
     if not dont_plot:
         summarize(session)
-        plot.plot(session)
+        graph.graph(session, tmpfs_color, other_cache_color)
