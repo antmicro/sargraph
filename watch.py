@@ -282,15 +282,15 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
     flags = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
     fcntl.fcntl(sys.stdin, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
-    readlist = [psar.stdout, sys.stdin]
-    if pgpu:
-        readlist.append(pgpu.stdout)
     # Gather data from sar output
     curr_gpu_util = 0
     curr_gpu_mem = 0
 
     while 1:
         # Await sar output or a command sent from command handler in sargraph.py
+        readlist = [psar.stdout, sys.stdin]
+        if pgpu:
+            readlist.append(pgpu.stdout)
         rlist, _, _ = select.select(readlist, [], [], 0.25)
         now = datetime.datetime.now()
         if sys.stdin in rlist:
@@ -394,12 +394,26 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
 
         if pgpu and pgpu.stdout in rlist:
             line = pgpu.stdout.readline().decode('utf-8')
-            curr_gpu_util, curr_gpu_mem = [
-                int(val.strip()) for val in line.split(', ')
-            ]
-            if MAX_USED_GPU_RAM < curr_gpu_mem:
-                MAX_USED_GPU_RAM = curr_gpu_mem
-            TOTAL_GPU_LOAD += curr_gpu_util
+            if pgpu.poll() is not None:
+                    print("nvidia-smi stopped working, reason:")
+                    print(line)
+                    print(f"Error code:  {pgpu.returncode}")
+                    print("Closing the GPU statistics collection")
+                    pgpu = None
+            else:
+                try:
+                    curr_gpu_util, curr_gpu_mem = [
+                        int(val.strip()) for val in line.split(', ')
+                    ]
+                    if MAX_USED_GPU_RAM < curr_gpu_mem:
+                        MAX_USED_GPU_RAM = curr_gpu_mem
+                    TOTAL_GPU_LOAD += curr_gpu_util
+                except ValueError:
+                    print(f"nvidia-smi error readout:  {line}")
+                    if "Unknown Error" in line:
+                        # No valid readouts from now on, let's terminate current nvidia-smi session
+                        pgpu.terminate()
+                        pgpu = None
 
         line = [
             timestamp,
