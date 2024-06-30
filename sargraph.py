@@ -36,7 +36,7 @@ p = run_or_fail("sar", "-V", stdout=subprocess.PIPE)
 
 # Check if screen is available
 p = run_or_fail("screen", "-v", stdout=subprocess.PIPE)
-version = scan("Screen version (\d+)", int, p.stdout.readline().decode())
+version = scan("Screen version (\\d+)", int, p.stdout.readline().decode())
 if version is None:
     fail("'screen' tool returned unknown output")
 
@@ -47,7 +47,7 @@ if args.session is None:
         args.fspath = os.path.realpath(args.fspath)
         with open("/proc/self/mounts", "r") as f:
             while args.fsdev is None:
-                args.fsdev = scan(f"^(/dev/\S+)\s+{re.escape(args.fspath)}\s+", str, f.readline())
+                args.fsdev = scan(f"^(/dev/\\S+)\\s+{re.escape(args.fspath)}\\s+", str, f.readline())
         if not args.fsdev:
             fail(f"no device is mounted on {args.fspath}")
 

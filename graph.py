@@ -60,7 +60,7 @@ labels = []
 
 # Check if the avaliable gnuplot has a required version
 p = run_or_fail("gnuplot", "--version", stdout=subprocess.PIPE)
-version = scan(r"gnuplot (\S+)", str, p.stdout.readline().decode())
+version = scan("gnuplot (\\S+)", str, p.stdout.readline().decode())
 if not is_version_ge(version, GNUPLOT_VERSION_EXPECTED):
     fail(
         f"gnuplot version too low. Need at least {GNUPLOT_VERSION_EXPECTED} found {version}")
@@ -160,6 +160,7 @@ def plot_stacked(ylabel, title, ram_file, column, tmpfs_color, other_cache_color
       '' using 1:5 with boxes title 'Shared mem' lc rgb '{tmpfs_color}', \
       '' using 1:($3 - $5) with boxes title 'Other cache (freed automatically)' lc rgb '{other_cache_color}'")
     g('unset key')
+
 # Read additional information from 'data.txt' comments
 def read_comments(sar_file):
     global START_DATE
@@ -197,19 +198,19 @@ def read_comments(sar_file):
 
             if line[0] != '#':
                 if not START_DATE:
-                    START_DATE = scan("^(\S+)", str, line)
-                END_DATE = scan("^(\S+)", str, line)
+                    START_DATE = scan("^(\\S+)", str, line)
+                END_DATE = scan("^(\\S+)", str, line)
 
             value = scan("label: (.+)", str, line)
             if value is not None:
-                key = scan("(\S+) label:", str, line)
+                key = scan("(\\S+) label:", str, line)
                 labels.append([key, value])
 
                 # Comments are not mixed with anything else, so skip
                 continue
 
             # Override summary variables. If they're missing, their default values are kept
-            value = scan("sargraph version: (\d+\.\d+)", str, line)
+            value = scan("sargraph version: (\\d+\\.\\d+)", str, line)
             if value is not None:
                 data_version = value
 
@@ -233,51 +234,51 @@ def read_comments(sar_file):
             if value is not None:
                 NAME_IFACE = value
 
-            value = scan("total ram: (\S+)", stof, line)
+            value = scan("total ram: (\\S+)", stof, line)
             if value is not None:
                 TOTAL_RAM = value
 
-            value = scan("max ram used: (\S+)", stof, line)
+            value = scan("max ram used: (\\S+)", stof, line)
             if value is not None:
                 MAX_USED_RAM = value
 
-            value = scan("total disk space: (\S+)", stof, line)
+            value = scan("total disk space: (\\S+)", stof, line)
             if value is not None:
                 TOTAL_FS = value
 
-            value = scan("max received: (\S+)", stof, line)
+            value = scan("max received: (\\S+)", stof, line)
             if value is not None:
                 MAX_RX = value
 
-            value = scan("max sent: (\S+)", stof, line)
+            value = scan("max sent: (\\S+)", stof, line)
             if value is not None:
                 MAX_TX = value
 
-            value = scan("total received: (\S+)", stof, line)
+            value = scan("total received: (\\S+)", stof, line)
             if value is not None:
                 TOTAL_RX = value
 
-            value = scan("total sent: (\S+)", stof, line)
+            value = scan("total sent: (\\S+)", stof, line)
             if value is not None:
                 TOTAL_TX = value
 
-            value = scan("duration: (\S+)", stof, line)
+            value = scan("duration: (\\S+)", stof, line)
             if value is not None:
                 DURATION = value
 
-            value = scan("max disk used: (\S+)", stof, line)
+            value = scan("max disk used: (\\S+)", stof, line)
             if value is not None:
                 MAX_USED_FS = value
 
-            value = scan("average load: (\S+)", stof, line)
+            value = scan("average load: (\\S+)", stof, line)
             if value is not None:
                 AVERAGE_LOAD = value
 
-            value = scan("total gpu ram: (\S+)", stof, line)
+            value = scan("total gpu ram: (\\S+)", stof, line)
             if value is not None:
                 TOTAL_GPU_RAM = value
 
-            value = scan("max gpu ram used: (\S+)", stof, line)
+            value = scan("max gpu ram used: (\\S+)", stof, line)
             if value is not None:
                 MAX_USED_GPU_RAM = value
 
@@ -289,11 +290,11 @@ def read_comments(sar_file):
             if value is not None:
                 GPU_DRIVER = value
 
-            value = scan("average gpu load: (\S+)", stof, line)
+            value = scan("average gpu load: (\\S+)", stof, line)
             if value is not None:
                 AVERAGE_GPU_LOAD = value
 
-    if data_version != scan("^(\d+\.\d+)", str, SARGRAPH_VERSION):
+    if data_version != scan("^(\\d+\\.\\d+)", str, SARGRAPH_VERSION):
         print("Warning: the data comes from an incompatible version of sargraph")
 
     # Translate the values to their value-unit representations
@@ -405,7 +406,7 @@ def graph(session, tmpfs_color, other_cache_color, fname='plot'):
 
     g(f"set output '{fname}.{OUTPUT_EXT}'")
 
-    title_machine = f"Running on {{/:Bold {HOST}}} \@ {{/:Bold {UNAME}}}, {{/:Bold {CPUS}}} threads x {{/:Bold {CPU_NAME}}}"
+    title_machine = f"Running on {{/:Bold {HOST}}} \\@ {{/:Bold {UNAME}}}, {{/:Bold {CPUS}}} threads x {{/:Bold {CPU_NAME}}}"
     title_specs = f"Total ram: {{/:Bold {TOTAL_RAM}}}, Total disk space: {{/:Bold {TOTAL_FS}}}"
     if TOTAL_GPU_RAM != 0:
         title_gpu = f"\\nGPU:  {{/:Bold {GPU_NAME}}} (driver {{/:Bold {GPU_DRIVER}}}, total ram: {{/:Bold {TOTAL_GPU_RAM}}})"
