@@ -376,6 +376,9 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
                     maxj, maxv = 0, 0
                     for j, free in enumerate(fs_data['MBfsfree']):
                         v = stof(fs_data['MBfsfree'][j]) + stof(fs_data['MBfsused'][j])
+                        # Skip shared memory device
+                        if fs_data["FILESYSTEM"][j] == "/dev/shm":
+                            continue
                         if maxv < v:
                             maxj, maxv = j, v
                     FS_SAR_INDEX = maxj
