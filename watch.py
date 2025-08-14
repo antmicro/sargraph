@@ -17,7 +17,9 @@ import sys
 import time
 import psutil
 import sched
+import platform
 from threading import Thread, Lock
+import threading
 
 import graph
 
@@ -154,6 +156,27 @@ def initialize(session, machine):
     with open(f"{session}.txt", "w") as f:
         print(*header, sep=", ", file=f)
 
+def initialize_darwin(session):
+    global TOTAL_RAM
+    global TOTAL_GPU_RAM
+
+    TOTAL_RAM = int(psutil.virtual_memory().total / 1024)
+
+    cpus = psutil.cpu_count(logical=True)
+
+    cpu_name = platform.processor() or "unknown"
+
+    header = [
+        f"# psutil version: {psutil.__version__}",
+        f"pid: {os.getpid()}",
+        f"machine: {platform.system()}",
+        f"cpu count: {cpus}",
+        f"cpu: {cpu_name}"
+    ]
+
+    with open(f"{session}.txt", "w") as f:
+        print(*header, sep=", ", file=f)
+
 
 # Add a summary comment to 'data.txt'
 def summarize(session):
@@ -207,19 +230,35 @@ def get_meminfo(scheduler):
     date = now.strftime("%Y-%m-%d")
     daytime = now.strftime("%H:%M:%S.%f")
     ram_data = psutil.virtual_memory()
-    if (ram_data.total - ram_data.free) // 1024 > MAX_USED_RAM:
-        MAX_USED_RAM = (ram_data.total - ram_data.free) // 1024
-    line = [
-        date + "-" + daytime,
-        100 * ram_data.free / ram_data.total,
-        100 * ram_data.cached / ram_data.total,
-        100 * ram_data.used / ram_data.total,
-        100 * ram_data.shared / ram_data.total,
-    ]
+    used = (ram_data.total - ram_data.free)
+    if used // 1024 > MAX_USED_RAM:
+        MAX_USED_RAM = used // 1024
+    if is_darwin():
+        line = [
+            date + "-" + daytime,
+            100 * ram_data.free / ram_data.total,
+            0,
+            100 * used / ram_data.total,
+            0
+        ]
+    else:
+        line = [
+            date + "-" + daytime,
+            100 * ram_data.free / ram_data.total,
+            100 * ram_data.cached / ram_data.total,
+            100 * ram_data.used / ram_data.total,
+            100 * ram_data.shared / ram_data.total
+        ]
     DATA_FILE_HANDLE.write(" ".join(["psu"]+[str(i) for i in line]))
 
-# Run sar and gather data from it
+
 def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
+    if is_darwin():
+        return watch_darwin(session, fsdev, iface, tmpfs_color, other_cache_color)
+    return watch_linux(session, fsdev, iface, tmpfs_color, other_cache_color)
+
+# Run sar and gather data from it
+def watch_linux(session, fsdev, iface, tmpfs_color, other_cache_color):
     global SAMPLE_NUMBER
     global START_DATE
     global END_DATE
@@ -294,40 +333,8 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
         rlist, _, _ = select.select(readlist, [], [], 0.25)
         now = datetime.datetime.now()
         if sys.stdin in rlist:
-            label_line = sys.stdin.readline().replace("\n", "")
-            if label_line.startswith("command:"):
-                label_line = label_line[len("command:"):]
-                if label_line.startswith("q:"):
-                    label_line = label_line[len("q:"):]
-
-                    list(map(s.cancel, s.queue))
-                    summarize(session)
-                    if label_line == "none":
-                        pass
-                    elif label_line:
-                        graph.graph(session, tmpfs_color, other_cache_color, label_line)
-                    elif not dont_plot:
-                        graph.graph(session, tmpfs_color, other_cache_color)
-                    dont_plot = True
-                    die = 1
-                    break
-                elif label_line.startswith("s:"):
-                    label_line = label_line[len("s:"):]
-
-                    dont_plot = True
-
-                    if label_line != "none":
-                        list(map(s.cancel, s.queue))
-                        summarize(session)
-                    if not label_line:
-                        graph.graph(session, tmpfs_color, other_cache_color)
-                    else:
-                        graph.graph(session, tmpfs_color, other_cache_color, label_line)
-            elif label_line.startswith('label:'):
-                label_line = label_line[len('label:'):]
-                with open(f"{session}.txt", "a") as f:
-                    timestamp = now.strftime("%Y-%m-%d-%H:%M:%S")
-                    print(f"# {timestamp} label: {label_line}", file=f)
+            if handle_command(session, s, dont_plot, tmpfs_color, other_cache_color, now):
+                break
         if psar.stdout not in rlist:
             continue
 
@@ -442,3 +449,142 @@ def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
     if not dont_plot:
         summarize(session)
         graph.graph(session, tmpfs_color, other_cache_color)
+
+def watch_darwin(session, fsdev, iface, tmpfs_color, other_cache_color):
+    global DATA_FILE_HANDLE
+
+    if DATA_FILE_HANDLE == None:
+        DATA_FILE_HANDLE = ThreadSafeFileWriter(f"{session}.txt")
+
+    # Was a graph already produced by save command from sargraph?
+    dont_plot = False
+
+    s = sched.scheduler(time.time, time.sleep)
+    sar_ev = s.enter(0, 1, psutil_sar_simulation, (s,))
+    mem_ev = s.enter(0, 1, get_meminfo, (s,))
+    thread = Thread(target = s.run)
+    thread.start()
+
+
+    initialize_darwin(session)
+    signal.signal(signal.SIGTERM, kill_handler)
+
+    # Make stdin nonblocking to continue working when no command is sent
+    flags = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
+    fcntl.fcntl(sys.stdin, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+
+    while 1:
+        # Await sar output or a command sent from command handler in sargraph.py
+        readlist = [sys.stdin]
+        rlist, _, _ = select.select(readlist, [], [], 0.25)
+        now = datetime.datetime.now()
+        if handle_command(session, s, dont_plot, tmpfs_color, other_cache_color, now):
+            break
+    list(map(s.cancel, s.queue))
+    thread.join()
+
+    # This runs if we were stopped by SIGTERM and no plot was made so far
+    if not dont_plot:
+        summarize(session)
+        graph.graph(session, tmpfs_color, other_cache_color)
+
+def handle_command(session, s, dont_plot, tmpfs_color, other_cache_color, now):
+    global die
+    label_line = sys.stdin.readline().replace("\n", "")
+    if label_line.startswith("command:"):
+        label_line = label_line[len("command:"):]
+        if label_line.startswith("q:"):
+            label_line = label_line[len("q:"):]
+
+            list(map(s.cancel, s.queue))
+            summarize(session)
+            if label_line == "none":
+                pass
+            elif label_line:
+                graph.graph(session, tmpfs_color, other_cache_color, label_line)
+            elif not dont_plot:
+                graph.graph(session, tmpfs_color, other_cache_color)
+            dont_plot = True
+            die = 1
+            return True
+        elif label_line.startswith("s:"):
+            label_line = label_line[len("s:"):]
+
+            dont_plot = True
+
+            if label_line != "none":
+                list(map(s.cancel, s.queue))
+                summarize(session)
+            if not label_line:
+                graph.graph(session, tmpfs_color, other_cache_color)
+            else:
+                graph.graph(session, tmpfs_color, other_cache_color, label_line)
+    elif label_line.startswith('label:'):
+        label_line = label_line[len('label:'):]
+        with open(f"{session}.txt", "a") as f:
+            timestamp = now.strftime("%Y-%m-%d-%H:%M:%S")
+            print(f"# {timestamp} label: {label_line}", file=f)
+    return False
+
+# sar is not available on macOS. This function creates the sar behavior, but use psutil instead. 
+def psutil_sar_simulation(scheduler):
+    global START_DATE
+    global TOTAL_LOAD
+    global SAMPLE_NUMBER
+    global TOTAL_RAM
+    global START_RX
+    global START_TX
+    global END_TX
+    global END_RX
+    global MAX_RX
+    global MAX_TX
+    global IFACE_NAME
+    global TOTAL_FS
+    global MAX_USED_FS
+    global DATA_FILE_HANDLE
+    global FS_NAME
+    global END_DATE
+
+    scheduler.enter(1, 1, psutil_sar_simulation, (scheduler,))
+    now = datetime.datetime.now()
+    date = now.strftime("%Y-%m-%d")
+    daytime = now.strftime("%H:%M:%S")
+    if START_DATE == "":
+        START_DATE = date + " " + daytime
+    cpu_used = psutil.cpu_percent()
+    TOTAL_LOAD += cpu_used
+    SAMPLE_NUMBER += 1
+    if TOTAL_RAM == 0:
+        TOTAL_RAM = psutil.virtual_memory().total // 1024
+    IFACE_NAME = "all"
+    net_stats = psutil.net_io_counters()
+    if START_RX <= 0 or START_TX <= 0:
+            START_RX, START_TX = net_stats.bytes_recv, net_stats.bytes_sent
+            END_RX, END_TX = net_stats.bytes_recv, net_stats.bytes_sent
+    curr_rx, curr_tx = (net_stats.bytes_recv - END_RX) / (1024 * 8), (net_stats.bytes_sent - END_TX) / (1024 * 8)
+    END_RX, END_TX = net_stats.bytes_recv, net_stats.bytes_sent
+    if MAX_RX < curr_rx:
+        MAX_RX = curr_rx
+    if MAX_TX < curr_tx:
+        MAX_TX = curr_tx
+    # apfs implements lvm, so it's a better option for visualizing the place in the container (which is shared by all partitions).
+    FS_NAME = "apfs container"
+    disk_stats = psutil.disk_usage('/')
+    curr_used = (disk_stats.total - disk_stats.free) / (1024 * 1024)
+    if TOTAL_FS == 0:
+        TOTAL_FS = disk_stats.total / (1024 * 1024)
+    if MAX_USED_FS < curr_used:
+        MAX_USED_FS = curr_used
+    END_DATE = date + " " + daytime
+    timestamp = date + "-" + daytime
+
+    line = [
+        timestamp,
+        cpu_used,
+        ((disk_stats.total - disk_stats.free) / disk_stats.total) * 100,
+        curr_rx / 128,
+        curr_tx / 128,
+    ]
+
+    DATA_FILE_HANDLE.write(" ".join(["sar"]+[str(i) for i in line]))

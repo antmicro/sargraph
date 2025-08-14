@@ -32,7 +32,8 @@ def send(sid, msg):
         time.sleep(0.1)
 
 # Check if sar is available
-p = run_or_fail("sar", "-V", stdout=subprocess.PIPE)
+if not is_darwin():
+    p = run_or_fail("sar", "-V", stdout=subprocess.PIPE)
 
 # Check if screen is available
 p = run_or_fail("screen", "-v", stdout=subprocess.PIPE)

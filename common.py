@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 import re
+import platform
 
 
 # Increase major number for general changes, middle number for smaller changes
@@ -89,3 +90,6 @@ def is_version_ge(a, b):
         if a[i] != b[i]:
             break
     return a[i] >= b[i]
+
+def is_darwin():
+    return platform.system() == 'Darwin'

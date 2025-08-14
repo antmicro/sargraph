@@ -156,9 +156,11 @@ def plot_stacked(ylabel, title, ram_file, column, tmpfs_color, other_cache_color
     g('set style data histograms')
     g('set style histogram rowstacked')
     g('set key reverse below Left width -25')
-    g(f"plot '{ram_file}' using 1:($3 + ${column}):{column} title 'RAM' with boxes palette, \
-      '' using 1:5 with boxes title 'Shared mem' lc rgb '{tmpfs_color}', \
-      '' using 1:($3 - $5) with boxes title 'Other cache (freed automatically)' lc rgb '{other_cache_color}'")
+    if not is_darwin():
+        g(f"plot '{ram_file}' using 1:($3 + ${column}):{column} title 'RAM' with boxes palette, \
+        '' using 1:5 with boxes title 'Shared mem' lc rgb '{tmpfs_color}', \
+        '' using 1:($3 - $5) with boxes title 'Other cache (freed automatically)' lc rgb '{other_cache_color}'")
+    g(f"plot '{ram_file}' using 1:($3 + ${column}):{column} title 'RAM' with boxes palette")
     g('unset key')
 
 # Read additional information from 'data.txt' comments
@@ -211,6 +213,10 @@ def read_comments(sar_file):
 
             # Override summary variables. If they're missing, their default values are kept
             value = scan("sargraph version: (\\d+\\.\\d+)", str, line)
+            if value is not None:
+                data_version = value
+
+            value = scan("psutil version: (\\d+\\.\\d+)", str, line)
             if value is not None:
                 data_version = value
 
