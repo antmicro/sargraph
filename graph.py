@@ -156,11 +156,12 @@ def plot_stacked(ylabel, title, ram_file, column, tmpfs_color, other_cache_color
     g('set style data histograms')
     g('set style histogram rowstacked')
     g('set key reverse below Left width -25')
-    if not is_darwin():
+    if is_darwin():
+        g(f"plot '{ram_file}' using 1:($3 + ${column}):{column} title 'RAM' with boxes palette")
+    else:
         g(f"plot '{ram_file}' using 1:($3 + ${column}):{column} title 'RAM' with boxes palette, \
         '' using 1:5 with boxes title 'Shared mem' lc rgb '{tmpfs_color}', \
         '' using 1:($3 - $5) with boxes title 'Other cache (freed automatically)' lc rgb '{other_cache_color}'")
-    g(f"plot '{ram_file}' using 1:($3 + ${column}):{column} title 'RAM' with boxes palette")
     g('unset key')
 
 # Read additional information from 'data.txt' comments
