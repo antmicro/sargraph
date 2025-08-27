@@ -18,8 +18,10 @@ import time
 import psutil
 import sched
 import platform
+import logging
 from threading import Thread, Lock
 import threading
+from logging.handlers import DatagramHandler
 
 import graph
 
@@ -47,7 +49,6 @@ END_RX = 0
 TOTAL_GPU_LOAD = 0.0
 TOTAL_GPU_RAM = 0
 MAX_USED_GPU_RAM = 0
-DATA_FILE_HANDLE = None
 
 FS_NAME = None
 FS_SAR_INDEX = None
@@ -60,15 +61,18 @@ def kill_handler(a, b):
     global die
     die = 1
 
-class ThreadSafeFileWriter:
-    def __init__(self, filename):
-        self.filename = filename
-        self.lock = Lock()
+class UDPHandler(DatagramHandler):
+    def emit(self, msg):
+        try:
+            if self.sock is None:
+                self.createSocket()
+            self.sock.sendto(self.format(msg).encode(), self.address)
+        except Exception as e:
+            pass
 
-    def write(self, data):
-        with self.lock:
-            with open(self.filename, 'a') as file:
-                file.write(data + '\n')
+
+logger = logging.getLogger("sargraph")
+logger.setLevel(logging.INFO)
 
 # Read a single table from sar output
 def read_table(psar):
@@ -153,8 +157,8 @@ def initialize(session, machine):
     except Exception as e:
         print(e)
         pass
-    with open(f"{session}.txt", "w") as f:
-        print(*header, sep=", ", file=f)
+
+    logger.info(", ".join(header))
 
 def initialize_darwin(session):
     global TOTAL_RAM
@@ -173,9 +177,7 @@ def initialize_darwin(session):
         f"cpu count: {cpus}",
         f"cpu: {cpu_name}"
     ]
-
-    with open(f"{session}.txt", "w") as f:
-        print(*header, sep=", ", file=f)
+    logger.info(", ".join(header))
 
 
 # Add a summary comment to 'data.txt'
@@ -220,11 +222,10 @@ def summarize(session):
             f"average gpu load: {TOTAL_GPU_LOAD / SAMPLE_NUMBER:.2f} %"
         ])
 
-    DATA_FILE_HANDLE.write(", ".join([str(i) for i in summary]))
+    logger.info(", ".join([str(i) for i in summary]))
 
 def get_meminfo(scheduler):
     global MAX_USED_RAM
-    global DATA_FILE_HANDLE
     scheduler.enter(0.1, 1, get_meminfo, (scheduler,))
     now = datetime.datetime.now()
     date = now.strftime("%Y-%m-%d")
@@ -249,10 +250,24 @@ def get_meminfo(scheduler):
             100 * ram_data.used / ram_data.total,
             100 * ram_data.shared / ram_data.total
         ]
-    DATA_FILE_HANDLE.write(" ".join(["psu"]+[str(i) for i in line]))
+    msg = " ".join(["psu"]+[str(i) for i in line])
+    logger.info(msg)
 
 
-def watch(session, fsdev, iface, tmpfs_color, other_cache_color, use_psutil):
+def watch(session, fsdev, iface, tmpfs_color, other_cache_color, use_psutil, udp=None, udp_cookie=None):
+    file_handler = logging.FileHandler(f"{session}.txt")
+    file_handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(file_handler)
+
+    if udp is not None:
+        spl = udp.rsplit(':', 1)
+        udp_handler = UDPHandler(spl[0], int(spl[1]))
+        if udp_cookie is None:
+            udp_handler.setFormatter(logging.Formatter("%(message)s\n"))
+        else:
+            udp_handler.setFormatter(logging.Formatter(f"[{udp_cookie}] %(message)s\n"))
+        logger.addHandler(udp_handler)
+
     if is_darwin() or use_psutil:
         return watch_psutil(session, fsdev, iface, tmpfs_color, other_cache_color)
     return watch_sar(session, fsdev, iface, tmpfs_color, other_cache_color)
@@ -280,11 +295,6 @@ def watch_sar(session, fsdev, iface, tmpfs_color, other_cache_color):
     global TOTAL_GPU_LOAD
     global TOTAL_GPU_RAM
     global MAX_USED_GPU_RAM
-    global DATA_FILE_HANDLE
-
-    if DATA_FILE_HANDLE == None:
-        DATA_FILE_HANDLE = ThreadSafeFileWriter(f"{session}.txt");
-
 
     global die
 
@@ -437,7 +447,7 @@ def watch_sar(session, fsdev, iface, tmpfs_color, other_cache_color):
                 f'{curr_gpu_util:.2f}',
                 f'{curr_gpu_mem / TOTAL_GPU_RAM * 100.0:.2f}'
             ])
-        DATA_FILE_HANDLE.write(" ".join(["sar"]+[str(i) for i in line]))
+        logger.info(" ".join(["sar"]+[str(i) for i in line]))
 
         if die:
             break
@@ -451,11 +461,6 @@ def watch_sar(session, fsdev, iface, tmpfs_color, other_cache_color):
         graph.graph(session, tmpfs_color, other_cache_color)
 
 def watch_psutil(session, fsdev, iface, tmpfs_color, other_cache_color):
-    global DATA_FILE_HANDLE
-
-    if DATA_FILE_HANDLE == None:
-        DATA_FILE_HANDLE = ThreadSafeFileWriter(f"{session}.txt")
-
     # Was a graph already produced by save command from sargraph?
     dont_plot = False
 
@@ -541,7 +546,6 @@ def psutil_sar_simulation(scheduler):
     global IFACE_NAME
     global TOTAL_FS
     global MAX_USED_FS
-    global DATA_FILE_HANDLE
     global FS_NAME
     global END_DATE
 
@@ -595,4 +599,4 @@ def psutil_sar_simulation(scheduler):
         curr_tx / 128,
     ]
 
-    DATA_FILE_HANDLE.write(" ".join(["sar"]+[str(i) for i in line]))
+    logger.info(" ".join(["sar"]+[str(i) for i in line]))
