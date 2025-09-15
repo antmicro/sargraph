@@ -252,13 +252,13 @@ def get_meminfo(scheduler):
     DATA_FILE_HANDLE.write(" ".join(["psu"]+[str(i) for i in line]))
 
 
-def watch(session, fsdev, iface, tmpfs_color, other_cache_color):
-    if is_darwin():
-        return watch_darwin(session, fsdev, iface, tmpfs_color, other_cache_color)
-    return watch_linux(session, fsdev, iface, tmpfs_color, other_cache_color)
+def watch(session, fsdev, iface, tmpfs_color, other_cache_color, use_psutil):
+    if is_darwin() or use_psutil:
+        return watch_psutil(session, fsdev, iface, tmpfs_color, other_cache_color)
+    return watch_sar(session, fsdev, iface, tmpfs_color, other_cache_color)
 
 # Run sar and gather data from it
-def watch_linux(session, fsdev, iface, tmpfs_color, other_cache_color):
+def watch_sar(session, fsdev, iface, tmpfs_color, other_cache_color):
     global SAMPLE_NUMBER
     global START_DATE
     global END_DATE
@@ -450,7 +450,7 @@ def watch_linux(session, fsdev, iface, tmpfs_color, other_cache_color):
         summarize(session)
         graph.graph(session, tmpfs_color, other_cache_color)
 
-def watch_darwin(session, fsdev, iface, tmpfs_color, other_cache_color):
+def watch_psutil(session, fsdev, iface, tmpfs_color, other_cache_color):
     global DATA_FILE_HANDLE
 
     if DATA_FILE_HANDLE == None:
@@ -569,8 +569,17 @@ def psutil_sar_simulation(scheduler):
     if MAX_TX < curr_tx:
         MAX_TX = curr_tx
     # apfs implements lvm, so it's a better option for visualizing the place in the container (which is shared by all partitions).
-    FS_NAME = "apfs container"
-    disk_stats = psutil.disk_usage('/')
+    if is_darwin():
+        FS_NAME = "apfs container"
+        disk_stats = psutil.disk_usage('/')
+    else: 
+        largest_partition = max(
+            psutil.disk_partitions(all=False),
+            key=lambda p: psutil.disk_usage(p.mountpoint).total
+        )
+        disk_stats = psutil.disk_usage(largest_partition.mountpoint)
+        FS_NAME = largest_partition.device
+        
     curr_used = (disk_stats.total - disk_stats.free) / (1024 * 1024)
     if TOTAL_FS == 0:
         TOTAL_FS = disk_stats.total / (1024 * 1024)

@@ -24,6 +24,7 @@ parser.add_argument('-n',      metavar='IFACE-NAME',   type=str, nargs='?', defa
 parser.add_argument('-o',      metavar='OUTPUT-NAME',  type=str, nargs='?', default='data',    dest='name',   help='set output base names')
 parser.add_argument('-t',      metavar='TMPFS-COLOR',  type=str, nargs='?', default='#f2c71b', dest='tmpfs',  help='set tmpfs plot color' )
 parser.add_argument('-c',      metavar='CACHE-COLOR',  type=str, nargs='?', default='#ee7af0', dest='cache',  help='set cache plot color' )
+parser.add_argument('-p',      action='store_true', dest='psutil', help='use psutil instead of sar')
 args = parser.parse_args()
 
 def send(sid, msg):
@@ -52,7 +53,7 @@ if args.session is None:
         if not args.fsdev:
             fail(f"no device is mounted on {args.fspath}")
 
-    watch.watch(args.name, args.fsdev, args.iface, args.tmpfs, args.cache)
+    watch.watch(args.name, args.fsdev, args.iface, args.tmpfs, args.cache, args.psutil)
     sys.exit(0)
 
 # Now handle the commands
