@@ -514,7 +514,6 @@ def handle_command(session, s, dont_plot, tmpfs_color, other_cache_color, now):
             dont_plot = True
 
             if label_line != "none":
-                list(map(s.cancel, s.queue))
                 summarize(session)
             if not label_line:
                 graph.graph(session, tmpfs_color, other_cache_color)
