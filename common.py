@@ -39,7 +39,11 @@ def run_or_fail(*argv, **kwargs):
 
 # Check if a process is running
 def pid_running(pid):
-    return os.path.exists(f"/proc/{pid}")
+    return file_exists(f"/proc/{pid}")
+
+# Check whether path exists
+def file_exists(filename: str):
+    return os.path.exists(filename)
 
 
 # Convert a string to float, also when the separator is a comma

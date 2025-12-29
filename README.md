@@ -1,6 +1,6 @@
 # sargraph
 
-Copyright (c) 2019-2023 [Antmicro](https://www.antmicro.com)
+Copyright (c) 2019-2026 [Antmicro](https://www.antmicro.com)
 
 This is a simple python tool that uses "sysstat" ("sar") to save information on CPU, RAM and disk usage.
 The process runs in background and can be controlled with a set of sargraph sub-commands.
@@ -10,7 +10,7 @@ Supported plot formats are PNG, SVG and ASCII, they are determined by filename e
 
 # Install requirements
 
-The sargraph requires `gnuplot`, `sysstat` (`sar`), `python3`, `coreutils` and `screen` to operate.
+The sargraph requires `gnuplot`, `sysstat` (`sar`), `python3` and `coreutils` to operate.
 In Debian you can install them with:
 
 ```
@@ -22,7 +22,6 @@ apt-get install -qqy --no-install-recommends \
     gnuplot-nox \
     python3 \
     python3-pip \
-    screen \
     sysstat
 
 # install Python dependencies

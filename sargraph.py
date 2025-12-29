@@ -11,12 +11,13 @@ import time
 
 import graph
 import watch
+import warnings
 
 from common import *
 
 # Declare and parse command line flags
 parser = argparse.ArgumentParser()
-parser.add_argument('session', metavar='SESSION-NAME', type=str, nargs='?', default=None,                         help='sargraph session name')
+parser.add_argument('session', metavar='SESSION-NAME', type=str, nargs='?',                                       help='sargraph session name')
 parser.add_argument('command', metavar='COMMAND',      type=str, nargs='*',                                       help='send command')
 parser.add_argument('-f',      metavar='DEVICE-NAME',  type=str, nargs='?', default=None,      dest='fsdev',      help='observe a chosen filesystem')
 parser.add_argument('-m',      metavar='MOUNT-DIR',    type=str, nargs='?', default=None,      dest='fspath',     help='observe a chosen filesystem')
@@ -26,26 +27,19 @@ parser.add_argument('-t',      metavar='TMPFS-COLOR',  type=str, nargs='?', defa
 parser.add_argument('-c',      metavar='CACHE-COLOR',  type=str, nargs='?', default='#ee7af0', dest='cache',      help='set cache plot color' )
 parser.add_argument('-u',      metavar='UDP',          type=str, nargs='?', default=None,      dest='udp',        help='set udp server address')
 parser.add_argument('-C',      metavar='UDP_COOKIE',   type=str, nargs='?', default=None,      dest='udp_cookie', help='set udp message cookie')
-parser.add_argument('-p',      action='store_true', dest='psutil', help='use psutil instead of sar')
+parser.add_argument('-p',      action='store_true',                                            dest='psutil',     help='use psutil instead of sar')
 args = parser.parse_args()
 
-def send(sid, msg):
-    p = subprocess.Popen(["screen", "-S", sid, "-X", "stuff", f"{msg}\n"])
-    while p.poll() is None:
-        time.sleep(0.1)
+def send(session: str, message: str):
+    sock, socket_path = watch.get_socket(session)
+    if not file_exists(socket_path):
+        fail(f"Session '{session}' does not exist")
 
-# Check if sar is available
-if not is_darwin():
-    p = run_or_fail("sar", "-V", stdout=subprocess.PIPE)
+    sock.connect(socket_path)
+    sock.send(message.encode("utf-8"))
+    sock.close()
 
-# Check if screen is available
-p = run_or_fail("screen", "-v", stdout=subprocess.PIPE)
-version = scan("Screen version (\\d+)", int, p.stdout.readline().decode())
-if version is None:
-    fail("'screen' tool returned unknown output")
-
-# If the script was run with no parameters, run in background and gather data
-if args.session is None:
+def create_session():
     # Find requested disk device
     if args.fspath:
         args.fspath = os.path.realpath(args.fspath)
@@ -53,69 +47,98 @@ if args.session is None:
             while args.fsdev is None:
                 args.fsdev = scan(f"^(/dev/\\S+)\\s+{re.escape(args.fspath)}\\s+", str, f.readline())
         if not args.fsdev:
-            fail(f"no device is mounted on {args.fspath}")
+            fail(f"No device is mounted on {args.fspath}")
 
-    watch.watch(args.name, args.fsdev, args.iface, args.tmpfs, args.cache, args.psutil, args.udp, args.udp_cookie)
+    params = (args.session, args.fsdev, args.iface, args.tmpfs, args.cache, args.udp, args.udp_cookie)
+    if is_darwin() or args.psutil:
+        watcher = watch.PsUtilWatcher(*params)
+    else:
+        watcher = watch.SarWatcher(*params)
+
+    watcher.start()
     sys.exit(0)
 
-# Now handle the commands
+# Check if sar is available
+if not is_darwin():
+    p = run_or_fail("sar", "-V", stdout=subprocess.PIPE)
 
-# Check if a command was provided
-if len(args.command) <= 0:
-    fail("command not provided")
+if args.name != "data":
+    warnings.warn("'-o' is deprecated, session name is default output base name")
 
-# Get session name and command name
-sid = args.session
-cmd = args.command
+# Check if a command was provided, if that session exists, yell at user for lack of commands, else spawn
+if len(args.command) == 0:
+    sock, socket_path = watch.get_socket(args.session)
+    if file_exists(socket_path):
+        fail("Command not provided")
+    
+    else:
+        print(f"Starting sargraph session '{args.session}'")
+        create_session()
 
-if cmd[0] == "start":
-    print(f"Starting sargraph session '{sid}'")
+if args.command[0] == "start":
+    sock, socket_path = watch.get_socket(args.session)
+    if file_exists(socket_path):
+        fail("Session with this name already exists")
+    
+    # Start watcher process
+    p = subprocess.Popen(
+        args=[sys.executable, os.path.realpath(__file__), args.session, *sys.argv[3:]],
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        start_new_session=True
+    )
 
-    # Spawn watcher process, *sys.argv[3:] is all arguments after 'chart start' + '-o [log name]' if not given
-    if "-o" not in sys.argv:
-        sys.argv += ["-o", sid]
-    p = subprocess.Popen(["screen", "-Logfile", f"{sid}.log", "-dmSL", sid, os.path.realpath(__file__), *sys.argv[3:]])
-
-    while p.poll() is None:
+    # Spinloop to see whether the subprocess even starts
+    attempts = 5
+    while attempts:
         time.sleep(0.1)
-    gpid = 0
-    j = 0
-    time.sleep(1)
-    print(f"Session '{sid}' started")
-elif cmd[0] == "stop":
-    print(f"Terminating sargraph session '{sid}'")
+        if file_exists(socket_path):
+            print(f"Session '{args.session}' started")
+            sys.exit(0)
+        attempts -= 1
+    
+    fail("Session did not start")
 
-    try:
-        gpid = int(os.popen(f"screen -ls | grep '.{sid}' | tr -d ' \t' | cut -f 1 -d '.'").read())
-    except:
-        print("Warning: cannot find pid.")
-        gpid = -1
-    if len(cmd) < 2:
-        send(sid, "command:q:")
+elif args.command[0] == "stop":
+    _, socket_path = watch.get_socket(args.session)
+    
+    print(f"Terminating sargraph session '{args.session}'")
+    if len(args.command) < 2:
+        send(args.session, "command:q:")
     else:
-        send(sid, f"command:q:{cmd[1]}")
-    if gpid == -1:
-        print("Waiting 3 seconds.")
-        time.sleep(3)
-    else:
-        while pid_running(gpid):
-            time.sleep(0.25)
-elif cmd[0] == "label":
+        send(args.session, f"command:q:{args.command[1]}")
+
+    # Spinloop to see whether the subprocess even dies
+    attempts = 5
+    while attempts:
+        time.sleep(0.5)
+        if not file_exists(socket_path):
+            print(f"Session '{args.session}' killed")
+            sys.exit(0)
+        attempts -= 1
+    
+    fail("Session did not respond")
+
+
+elif args.command[0] == "label":
     # Check if the label name was provided
-    if len(cmd) < 2:
+    if len(args.command) < 2:
         fail("label command requires an additional parameter")
-    print(f"Adding label '{cmd[1]}' to sargraph session '{sid}'.")
-    send(sid, f"label:{cmd[1]}")
-elif cmd[0] == 'save':
-    print(f"Saving graph from session '{sid}'.")
-    if len(cmd) < 2:
-        send(sid, "command:s:")
+
+    print(f"Adding label '{args.command[1]}' to sargraph session '{args.session}'.")
+    send(args.session, f"label:{args.command[1]}")
+
+
+elif args.command[0] == 'save':
+    print(f"Saving graph from session '{args.session}'.")
+    if len(args.command) < 2:
+        send(args.session, "command:s:")
     else:
-        send(sid, f"command:s:{cmd[1]}")
-elif cmd[0] == 'plot':
-    if len(cmd) < 2:
-        graph.graph(sid, args.tmpfs, args.cache)
+        send(args.session, f"command:s:{args.command[1]}")
+
+elif args.command[0] == 'plot':
+    if len(args.command) < 2:
+        graph.graph(args.session, args.tmpfs, args.cache)
     else:
-        graph.graph(sid, args.tmpfs, args.cache, cmd[1])
+        graph.graph(args.session, args.tmpfs, args.cache, args.command[1])
 else:
-    fail(f"unknown command '{cmd[0]}'")
+    fail(f"unknown command '{args.command[0]}'")
