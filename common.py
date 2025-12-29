@@ -97,3 +97,6 @@ def is_version_ge(a, b):
 
 def is_darwin():
     return platform.system() == 'Darwin'
+
+def is_windows():
+    return platform.system() == 'Windows'

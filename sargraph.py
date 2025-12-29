@@ -50,7 +50,7 @@ def create_session():
             fail(f"No device is mounted on {args.fspath}")
 
     params = (args.session, args.fsdev, args.iface, args.tmpfs, args.cache, args.udp, args.udp_cookie)
-    if is_darwin() or args.psutil:
+    if is_darwin() or args.psutil or is_windows():
         watcher = watch.PsUtilWatcher(*params)
     else:
         watcher = watch.SarWatcher(*params)
@@ -59,7 +59,7 @@ def create_session():
     sys.exit(0)
 
 # Check if sar is available
-if not is_darwin():
+if not (is_darwin() or is_windows()):
     p = run_or_fail("sar", "-V", stdout=subprocess.PIPE)
 
 if args.name != "data":

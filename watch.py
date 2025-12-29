@@ -102,8 +102,10 @@ def read_iface_stats(iface):
     return rx, tx
 
 def get_socket(session):
-    # TODO: when using on other platforms make sure this path exist; namely windows
-    path = f"/tmp/sargraph-{session}.sock"
+    if is_windows():
+        path = fr"\\.\pipe\sargraph-{session}"
+    else:
+        path = f"/tmp/sargraph-{session}.sock"
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
     return sock, path
 
@@ -215,7 +217,7 @@ class Watcher(abc.ABC):
         used = (ram_data.total - ram_data.free)
         if used // 1024 > MAX_USED_RAM:
             MAX_USED_RAM = used // 1024
-        if is_darwin():
+        if isinstance(self, PsUtilWatcher):
             line = [
                 date + "-" + daytime,
                 100 * ram_data.free / ram_data.total,
