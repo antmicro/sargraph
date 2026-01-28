@@ -101,16 +101,16 @@ def read_iface_stats(iface):
         tx = scan(r"(\d+)", int, f.readline())
     return rx, tx
 
-def get_socket(session):
-    if is_windows():
-        path = fr"\\.\pipe\sargraph-{session}"
-    else:
-        path = f"/tmp/sargraph-{session}.sock"
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    return sock, path
+def get_socket_path(session):
+    return fr"\\.\pipe\sargraph-{session}" if is_windows() else f"/tmp/sargraph-{session}.sock"
 
+def get_bound_socket(sock_path):
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    sock.bind(sock_path)
+    return sock
 
 class Watcher(abc.ABC):
+    sock: socket.socket
 
     def __init__(self, session, fsdev, iface, tmpfs_color, other_cache_color, udp=None, udp_cookie=None):
         super().__init__()
@@ -129,7 +129,7 @@ class Watcher(abc.ABC):
         file_handler.setFormatter(logging.Formatter("%(message)s"))
         self.logger.addHandler(file_handler)
 
-        self.socket, self.socket_path = get_socket(self.session)
+        self.socket_path = get_socket_path(session)
 
         # Was a graph already produced by save command from sargraph?
         self.dont_plot = False
@@ -160,7 +160,7 @@ class Watcher(abc.ABC):
         self.die = True
 
     def recv_data(self) -> str:
-        data = self.socket.recv(1 << 10)  # 1024 bytes should be enough
+        data = self.sock.recv(1 << 10)  # 1024 bytes should be enough
         return data.decode("utf-8").replace("\n", "").strip()
 
     # Add a summary comment to 'data.txt'
@@ -237,7 +237,7 @@ class Watcher(abc.ABC):
         self.logger.info(msg)
 
     def start(self):
-        self.socket.bind(self.socket_path)
+        self.sock = get_bound_socket(self.socket_path)
         signal.signal(signal.SIGTERM, self.kill_handler)
 
         try:
@@ -387,7 +387,7 @@ class SarWatcher(Watcher):
         curr_gpu_util = 0
         curr_gpu_mem = 0
 
-        socket_fd = self.socket.fileno()
+        socket_fd = self.sock.fileno()
 
         while 1:
             # Await sar output or a command sent from command handler in sargraph.py
@@ -621,7 +621,7 @@ class PsUtilWatcher(Watcher):
         thread.start()
 
         self.initialize()
-        socket_fd = self.socket.fileno()
+        socket_fd = self.sock.fileno()
 
         while 1:
             # Await sar output or a command sent from command handler in sargraph.py

@@ -7,7 +7,6 @@
 
 import argparse
 import sys
-import time
 
 import graph
 import watch
@@ -31,10 +30,11 @@ parser.add_argument('-p',      action='store_true',                             
 args = parser.parse_args()
 
 def send(session: str, message: str):
-    sock, socket_path = watch.get_socket(session)
+    socket_path = watch.get_socket_path(session)
     if not file_exists(socket_path):
         fail(f"Session '{session}' does not exist")
 
+    sock = watch.get_bound_socket(socket_path)
     sock.connect(socket_path)
     sock.send(message.encode("utf-8"))
     sock.close()
@@ -67,8 +67,7 @@ if args.name != "data":
 
 # Check if a command was provided, if that session exists, yell at user for lack of commands, else spawn
 if len(args.command) == 0:
-    sock, socket_path = watch.get_socket(args.session)
-    if file_exists(socket_path):
+    if file_exists(watch.get_socket_path(args.session)):
         fail("Command not provided")
     
     else:
@@ -76,7 +75,7 @@ if len(args.command) == 0:
         create_session()
 
 if args.command[0] == "start":
-    sock, socket_path = watch.get_socket(args.session)
+    socket_path = watch.get_socket_path(args.session)
     if file_exists(socket_path):
         fail("Session with this name already exists")
     
@@ -95,7 +94,7 @@ if args.command[0] == "start":
     fail("Session did not start")
 
 elif args.command[0] == "stop":
-    _, socket_path = watch.get_socket(args.session)
+    socket_path = watch.get_socket_path(args.session)
     
     print(f"Terminating sargraph session '{args.session}'")
     if len(args.command) < 2:
