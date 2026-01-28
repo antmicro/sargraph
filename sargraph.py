@@ -34,7 +34,7 @@ def send(session: str, message: str):
     if not file_exists(socket_path):
         fail(f"Session '{session}' does not exist")
 
-    sock = watch.get_bound_socket(socket_path)
+    sock = watch.get_socket()
     sock.connect(socket_path)
     sock.send(message.encode("utf-8"))
     sock.close()

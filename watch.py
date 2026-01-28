@@ -104,8 +104,11 @@ def read_iface_stats(iface):
 def get_socket_path(session):
     return fr"\\.\pipe\sargraph-{session}" if is_windows() else f"/tmp/sargraph-{session}.sock"
 
+def get_socket():
+    return socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+
 def get_bound_socket(sock_path):
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    sock = get_socket()
     sock.bind(sock_path)
     return sock
 
