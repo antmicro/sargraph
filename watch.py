@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #
-# (c) 2019-2023 Antmicro <www.antmicro.com>
+# (c) 2019-2026 Antmicro <www.antmicro.com>
 # License: Apache-2.0
 #
 
@@ -131,7 +131,7 @@ class Watcher(abc.ABC):
 
         self.socket, self.socket_path = get_socket(self.session)
 
-        # Was a graph alreay produced by save command from sargraph?
+        # Was a graph already produced by save command from sargraph?
         self.dont_plot = False
 
         # Should we die?

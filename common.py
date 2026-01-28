@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #
-# (c) 2019-2023 Antmicro <www.antmicro.com>
+# (c) 2019-2026 Antmicro <www.antmicro.com>
 # License: Apache-2.0
 #
 
@@ -11,6 +11,7 @@ import subprocess
 import sys
 import re
 import platform
+import time
 
 
 # Increase major number for general changes, middle number for smaller changes
@@ -44,6 +45,14 @@ def pid_running(pid):
 # Check whether path exists
 def file_exists(filename: str):
     return os.path.exists(filename)
+
+# Spin and wait until function succeeds
+def spinloop(f, wait: float, tries: int):
+    for _ in range(tries):
+        if f():
+            return True
+        time.sleep(wait)
+    return False
 
 
 # Convert a string to float, also when the separator is a comma

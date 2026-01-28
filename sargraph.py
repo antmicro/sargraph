@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #
-# (c) 2019-2023 Antmicro <www.antmicro.com>
+# (c) 2019-2026 Antmicro <www.antmicro.com>
 # License: Apache-2.0
 #
 
@@ -88,13 +88,9 @@ if args.command[0] == "start":
     )
 
     # Spinloop to see whether the subprocess even starts
-    attempts = 5
-    while attempts:
-        time.sleep(0.1)
-        if file_exists(socket_path):
-            print(f"Session '{args.session}' started")
-            sys.exit(0)
-        attempts -= 1
+    if spinloop(lambda: file_exists(socket_path), 0.1, 5):
+        print(f"Session '{args.session}' started")
+        sys.exit(0)
     
     fail("Session did not start")
 
@@ -108,14 +104,10 @@ elif args.command[0] == "stop":
         send(args.session, f"command:q:{args.command[1]}")
 
     # Spinloop to see whether the subprocess even dies
-    attempts = 5
-    while attempts:
-        time.sleep(0.5)
-        if not file_exists(socket_path):
-            print(f"Session '{args.session}' killed")
-            sys.exit(0)
-        attempts -= 1
-    
+    if spinloop(lambda: not file_exists(socket_path), 0.5, 5):
+        print(f"Session '{args.session}' killed")
+        sys.exit(0)
+
     fail("Session did not respond")
 
 
