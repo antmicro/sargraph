@@ -300,7 +300,7 @@ class SarWatcher(Watcher):
         global TOTAL_GPU_RAM
 
         with open("/proc/meminfo") as f:
-            TOTAL_RAM = int(scan("MemTotal:\s+(\d+)", float, f.read()))
+            TOTAL_RAM = int(scan(r"MemTotal:\s+(\d+)", float, f.read()))
 
         uname = machine.split(" ")[0:2]
         uname = f"{uname[0]} {uname[1]}"
