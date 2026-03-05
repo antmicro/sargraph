@@ -587,11 +587,14 @@ class PsUtilWatcher(Watcher):
         if is_darwin():
             FS_NAME = "apfs container"
             disk_stats = psutil.disk_usage('/')
-        else: 
-            largest_partition = max(
-                psutil.disk_partitions(all=False),
-                key=lambda p: psutil.disk_usage(p.mountpoint).total
-            )
+        else:
+            disks = psutil.disk_partitions(all=False)
+            largest_partition = disks[0]
+            for d in disks[1:]:
+                try:
+                    largest_partition = max([d, largest_partition], key=lambda p: psutil.disk_usage(p.mountpoint).total)
+                except PermissionError:
+                    pass
             disk_stats = psutil.disk_usage(largest_partition.mountpoint)
             FS_NAME = largest_partition.device
             
