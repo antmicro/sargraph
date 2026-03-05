@@ -87,7 +87,7 @@ if args.command[0] == "start":
     )
 
     # Spinloop to see whether the subprocess even starts
-    if spinloop(lambda: file_exists(socket_path), 0.1, 5):
+    if spinloop(lambda: file_exists(socket_path), 0.1, 10):
         print(f"Session '{args.session}' started")
         sys.exit(0)
     
@@ -103,7 +103,7 @@ elif args.command[0] == "stop":
         send(args.session, f"command:q:{args.command[1]}")
 
     # Spinloop to see whether the subprocess even dies
-    if spinloop(lambda: not file_exists(socket_path), 0.5, 5):
+    if spinloop(lambda: not file_exists(socket_path), 0.5, 10):
         print(f"Session '{args.session}' killed")
         sys.exit(0)
 
