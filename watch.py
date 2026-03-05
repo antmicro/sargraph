@@ -535,7 +535,7 @@ class PsUtilWatcher(Watcher):
         cpu_name = platform.processor() or "unknown"
 
         header = [
-            f"# psutil version: {psutil.__version__}",
+            f"# sargraph version: {SARGRAPH_VERSION}",
             f"pid: {os.getpid()}",
             f"machine: {platform.system()}",
             f"cpu count: {cpus}",
@@ -617,13 +617,13 @@ class PsUtilWatcher(Watcher):
         # Was a graph already produced by save command from sargraph?
         dont_plot = False
 
+        self.initialize(None)
         s = sched.scheduler(time.time, time.sleep)
         sar_ev = s.enter(0, 1, self.psutil_sar_simulation, (s,))
         mem_ev = s.enter(0, 1, self.get_meminfo, (s,))
         thread = Thread(target = s.run)
         thread.start()
 
-        self.initialize()
         socket_fd = self.sock.fileno()
 
         while 1:
