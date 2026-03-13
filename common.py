@@ -23,6 +23,27 @@ TIME_UNITS = ['seconds', 'minutes', 'hours']
 DATA_UNITS = ['B', 'kB', 'MB', 'GB', 'TB', 'PB']
 SPEED_UNITS = ['Mb/s', 'Gb/s', 'Tb/s', 'Pb/s']
 
+def send_line(conn, msg):
+    conn.sendall(f"{msg}\n".encode("utf8"))
+
+def recv_lines(conn):
+    total_data = b""
+    data = conn.recv(256)
+    if not data:
+        return []
+    while True:
+        total_data += data
+        if not data or total_data[-1:] == b"\n":
+            break
+        data = conn.recv(256)
+    try:
+        return total_data.decode("utf8").splitlines()
+    except UnicodeDecodeError:
+        return ValueError("Data received in invalid encoding, expected utf8")
+
+def recv_oneline(conn):
+    return recv_lines(conn)[0]
+
 # Print an error message and exit with non-zero status
 def fail(msg):
     print(f"Error: {msg}", file=sys.stderr)
@@ -36,15 +57,6 @@ def run_or_fail(*argv, **kwargs):
     except:
         fail(f"'{argv[0]}' tool not found")
     return p
-
-
-# Check if a process is running
-def pid_running(pid):
-    return file_exists(f"/proc/{pid}")
-
-# Check whether path exists
-def file_exists(filename: str):
-    return os.path.exists(filename)
 
 # Spin and wait until function succeeds
 def spinloop(f, wait: float, tries: int):

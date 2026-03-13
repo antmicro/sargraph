@@ -10,6 +10,7 @@ import sys
 
 import graph
 import watch
+import session
 import warnings
 
 from common import *
@@ -28,16 +29,6 @@ parser.add_argument('-u',      metavar='UDP',          type=str, nargs='?', defa
 parser.add_argument('-C',      metavar='UDP_COOKIE',   type=str, nargs='?', default=None,      dest='udp_cookie', help='set udp message cookie')
 parser.add_argument('-p',      action='store_true',                                            dest='psutil',     help='use psutil instead of sar')
 args = parser.parse_args()
-
-def send(session: str, message: str):
-    socket_path = watch.get_socket_path(session)
-    if not file_exists(socket_path):
-        fail(f"Session '{session}' does not exist")
-
-    sock = watch.get_socket()
-    sock.connect(socket_path)
-    sock.send(message.encode("utf-8"))
-    sock.close()
 
 def create_session():
     # Find requested disk device
@@ -67,69 +58,69 @@ if args.name != "data":
 
 # Check if a command was provided, if that session exists, yell at user for lack of commands, else spawn
 if len(args.command) == 0:
-    if file_exists(watch.get_socket_path(args.session)):
-        fail("Command not provided")
-    
+    if session.get_address(args.session):
+        fail(f"Session '{args.session}' already exists, provide command!")
     else:
         print(f"Starting sargraph session '{args.session}'")
         create_session()
 
-if args.command[0] == "start":
-    socket_path = watch.get_socket_path(args.session)
-    if file_exists(socket_path):
-        fail("Session with this name already exists")
-    
-    # Start watcher process
-    p = subprocess.Popen(
-        args=[sys.executable, os.path.realpath(__file__), args.session, *sys.argv[3:]],
-        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        start_new_session=True
-    )
+# print response from server until status message is received or connection is closed
+def print_response(sarconn):
+    while True:
+        lines = recv_lines(sarconn)
+        if not lines:
+            return (400, "Connection unexpectedly closed by server")
+        for line in lines:
+            if line[:3] == "200":
+                return (200, line)
+            print('[SARGRAPH]', line)
 
-    # Spinloop to see whether the subprocess even starts
-    if spinloop(lambda: file_exists(socket_path), 0.1, 10):
+match args.command[0]:
+    case 'plot':
+        fname = graph.DEFAULT_PLOT_FNAME
+        if len(args.command) > 1:
+            fname = args.command[1]
+        graph.graph(args.session, args.tmpfs, args.cache, fname)
+
+    case "start":
+        if session.get_address(args.session):
+            fail(f"Session for '{args.session}' already exists")
+
+        print("Starting sargraph session... ", end='', flush=True)
+        p = subprocess.Popen(
+            args=[sys.executable, os.path.realpath(__file__), args.session, *sys.argv[3:]],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True
+        )
+        time.sleep(1)
+        if p.poll() is not None:
+            fail(f"Sargraph failed to start with exit code {p.returncode}")
+        print("ok")
+
+        print("Wait for sargraph connection... ", end='', flush=True)
+        try:
+            sarconn = session.connect(args.session)
+        except ConnectionError as e:
+            fail(e)
+        send_line(sarconn, "PING")
+        status, msg = print_response(sarconn)
+        sarconn.close()
+        if status != 200:
+            fail(msg)
         print(f"Session '{args.session}' started")
         sys.exit(0)
-    
-    fail("Session did not start")
 
-elif args.command[0] == "stop":
-    socket_path = watch.get_socket_path(args.session)
-    
-    print(f"Terminating sargraph session '{args.session}'")
-    if len(args.command) < 2:
-        send(args.session, "command:q:")
-    else:
-        send(args.session, f"command:q:{args.command[1]}")
-
-    # Spinloop to see whether the subprocess even dies
-    if spinloop(lambda: not file_exists(socket_path), 0.5, 10):
-        print(f"Session '{args.session}' killed")
+    case _:
+        cmd = ' '.join(args.command)
+        try:
+            sarconn = session.connect(args.session)
+        except ConnectionError as e:
+            fail(e)
+        except KeyboardInterrupt:
+            sys.exit(0)
+        send_line(sarconn, cmd)
+        status, msg = print_response(sarconn)
+        sarconn.close()
+        if status != 200:
+            fail(msg)
         sys.exit(0)
-
-    fail("Session did not respond")
-
-
-elif args.command[0] == "label":
-    # Check if the label name was provided
-    if len(args.command) < 2:
-        fail("label command requires an additional parameter")
-
-    print(f"Adding label '{args.command[1]}' to sargraph session '{args.session}'.")
-    send(args.session, f"label:{args.command[1]}")
-
-
-elif args.command[0] == 'save':
-    print(f"Saving graph from session '{args.session}'.")
-    if len(args.command) < 2:
-        send(args.session, "command:s:")
-    else:
-        send(args.session, f"command:s:{args.command[1]}")
-
-elif args.command[0] == 'plot':
-    if len(args.command) < 2:
-        graph.graph(args.session, args.tmpfs, args.cache)
-    else:
-        graph.graph(args.session, args.tmpfs, args.cache, args.command[1])
-else:
-    fail(f"unknown command '{args.command[0]}'")

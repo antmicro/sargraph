@@ -7,6 +7,7 @@
 
 
 import datetime
+import session
 import os
 import socket
 import subprocess
@@ -18,6 +19,7 @@ import tempfile
 global gnuplot
 
 GNUPLOT_VERSION_EXPECTED = "5.0"
+DEFAULT_PLOT_FNAME="plot"
 
 # Every summary variable requires a default value in case it missed in a session log
 START_DATE = ""
@@ -65,12 +67,12 @@ if not is_version_ge(version, GNUPLOT_VERSION_EXPECTED):
     fail(
         f"gnuplot version too low. Need at least {GNUPLOT_VERSION_EXPECTED} found {version}")
 
-def split_data_file(session):
+def split_data_file(session_name):
     sar_data = []
     psu_data = []
 
     # Read the input file
-    with open(f"{session}.txt", 'r') as file:
+    with open(session.data_file(session_name), 'r') as file:
         in_summary = False
         for line in file:
             if line.startswith('#'):
@@ -340,7 +342,7 @@ def read_comments(sar_file):
     DURATION = unit_str(DURATION, TIME_UNITS, 60)
 
 
-def graph(session, tmpfs_color, other_cache_color, fname='plot'):
+def graph(session_name, tmpfs_color, other_cache_color, fname=DEFAULT_PLOT_FNAME):
     global OUTPUT_TYPE
     global OUTPUT_EXT
 
@@ -378,7 +380,7 @@ def graph(session, tmpfs_color, other_cache_color, fname='plot'):
 
     # Leave just the base name
     fname = cut_suffix(fname, f".{OUTPUT_EXT}")
-    sar_file, ram_file = split_data_file(session)
+    sar_file, ram_file = split_data_file(session_name)
 
     # ASCII plots have their own routine
     if OUTPUT_TYPE == "ascii":
@@ -538,7 +540,7 @@ def convert_labels_to_tags(labels):
     return tags
 
 
-def servis_graph(sar_file, ram_file, fname='plot', output_ext='ascii'):
+def servis_graph(sar_file, ram_file, fname=DEFAULT_PLOT_FNAME, output_ext='ascii'):
     read_comments(sar_file)
     xdata, xdata_ram, ydata = read_data(sar_file, ram_file)
     titles = [f"""CPU load (average = {AVERAGE_LOAD} %)""",

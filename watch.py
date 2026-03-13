@@ -6,6 +6,7 @@
 #
 
 
+import session
 import datetime
 import os
 import select
@@ -101,44 +102,41 @@ def read_iface_stats(iface):
         tx = scan(r"(\d+)", int, f.readline())
     return rx, tx
 
-def get_socket_path(session):
-    return fr"\\.\pipe\sargraph-{session}" if is_windows() else f"/tmp/sargraph-{session}.sock"
-
-def get_socket():
-    return socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-
-def get_bound_socket(sock_path):
-    sock = get_socket()
-    sock.bind(sock_path)
-    return sock
-
 class Watcher(abc.ABC):
     sock: socket.socket
+    cmd_regex = re.compile(r"([\S]+)\s*(.*)")
 
-    def __init__(self, session, fsdev, iface, tmpfs_color, other_cache_color, udp=None, udp_cookie=None):
+    codes = {
+        400: "invalid command",
+        401: "argument required",
+        200: "success"
+    }
+
+    def __init__(self, session_name, fsdev, iface, tmpfs_color, other_cache_color, udp=None, udp_cookie=None, verbose=False):
         super().__init__()
-
-        self.session = session
+        session.init_db()
 
         self.fsdev = fsdev
         self.iface = iface
+        self.session_name = session_name
         self.tmpfs_color = tmpfs_color
         self.other_cache_color = other_cache_color
 
         self.logger = logging.getLogger("sargraph")
         self.logger.setLevel(logging.INFO)
 
-        file_handler = logging.FileHandler(f"{session}.txt")
+        file_handler = logging.FileHandler(session.data_file(session_name))
         file_handler.setFormatter(logging.Formatter("%(message)s"))
         self.logger.addHandler(file_handler)
-
-        self.socket_path = get_socket_path(session)
 
         # Was a graph already produced by save command from sargraph?
         self.dont_plot = False
 
         # Should we die?
         self.die = False
+
+        # The client that send 'stop' command
+        self.last_client = None
 
         if udp is not None:
             spl = udp.rsplit(':', 1)
@@ -148,6 +146,49 @@ class Watcher(abc.ABC):
             else:
                 udp_handler.setFormatter(logging.Formatter(f"[{udp_cookie}] %(message)s\n"))
             self.logger.addHandler(udp_handler)
+
+    def log_exception(self, e):
+        # make sure we prepend '#' to every line, to make reading file work
+        self.logger.error("# Exception while watching!")
+        for lines in traceback.format_exception(type(e), e, e.__traceback__):
+            for err_line in lines.split("\n"):
+                self.logger.error(f"# {err_line}")
+
+    def send_status(self, conn, code):
+        send_line(conn, f"{code} {self.codes[code]}")
+
+    def close_when_fin(self, conn):
+        conn.shutdown(socket.SHUT_WR)
+        try:
+            while conn.recv(256):  # wait until FIN packet
+                pass
+        except ConnectionResetError: # got RST
+            pass
+        conn.close()
+
+    def client_handler(self, conn, s):
+        try:
+            self.logger.info(f"# accepted client from {conn.getsockname()}")
+            conn.setblocking(True) # set this explicitly as Windows inherit blocking settings
+            send_line(conn, f"220 {self.session_name} SARGRAPH {SARGRAPH_VERSION}") # hello message
+            cmd = recv_oneline(conn)
+            now = datetime.datetime.now()
+            self.logger.info(f"# received command {cmd}")
+            self.handle_command(conn, cmd, s, now)
+            self.logger.info("# command ok")
+            if not self.last_client:
+                self.close_when_fin(conn)
+        except Exception as e:
+            conn.close()
+            self.log_exception(e)
+
+    def accept_client(self, s: sched.scheduler):
+        try:
+            conn, _ = self.sock.accept()
+        except socket.timeout:
+            return
+        thread = Thread(target=self.client_handler, args=(conn, s))
+        thread.start()
 
     # Initialize 'data.txt' where the data is dumped
     @abc.abstractmethod
@@ -161,10 +202,6 @@ class Watcher(abc.ABC):
 
     def kill_handler(self, *_):
         self.die = True
-
-    def recv_data(self) -> str:
-        data = self.sock.recv(1 << 10)  # 1024 bytes should be enough
-        return data.decode("utf-8").replace("\n", "").strip()
 
     # Add a summary comment to 'data.txt'
     def summarize(self):
@@ -240,58 +277,73 @@ class Watcher(abc.ABC):
         self.logger.info(msg)
 
     def start(self):
-        self.sock = get_bound_socket(self.socket_path)
+        self.sock = session.create_server(self.session_name)
+        self.sock.settimeout(0.25)
+        self.logger.info(f"# opening session socket on {session.get_address(self.session_name)}")
         signal.signal(signal.SIGTERM, self.kill_handler)
+        signal.signal(signal.SIGINT,  self.kill_handler)
 
         try:
             self.watch()
         except Exception as e:
-            # make sure we prepend '#' to every line, to make reading file work
-            self.logger.error("# Exception while watching!")
-            for line in traceback.format_exception(type(e), e, e.__traceback__):
-                self.logger.error(f"# {line}")
-        
-        try:  # clean up after ourselves
-            os.unlink(self.socket_path)
-        except OSError:
-            pass
+            self.log_exception(e)
+        session.remove(self.session_name)
+        if self.last_client:
+            self.send_status(self.last_client, 200)
+            self.close_when_fin(self.last_client)
+        self.sock.close()
 
-        return
-
-    def handle_command(self, label_line: str, s: sched.scheduler, now: datetime.datetime):
-        if label_line.startswith("command:"):
-            label_line = label_line[len("command:"):]
-            if label_line.startswith("q:"):
-                label_line = label_line[len("q:"):]
-
+    def handle_command(self, conn: socket.socket, cmd: str, s: sched.scheduler, now: datetime.datetime):
+        matched = self.cmd_regex.match(cmd)
+        if not matched:
+            self.send_status(conn, 400)
+            return
+        match matched[1].upper():
+            case "STOP":
+                fname = matched[2]
+                self.logger.info(f"# quiting {fname}")
                 list(map(s.cancel, s.queue))
                 self.summarize()
-                if label_line == "none":
-                    pass
-                elif label_line:
-                    graph.graph(self.session, self.tmpfs_color, self.other_cache_color, label_line)
-                elif not self.dont_plot:
-                    graph.graph(self.session, self.tmpfs_color, self.other_cache_color)
+                if fname or not self.dont_plot:
+                    if not fname:
+                        fname = graph.DEFAULT_PLOT_FNAME
+                    send_line(conn, f"graphing to '{fname}'")
+                    graph.graph(self.session_name, self.tmpfs_color, self.other_cache_color, fname)
                 self.dont_plot = True
-                self.die = 1
-                return True
-            elif label_line.startswith("s:"):
-                label_line = label_line[len("s:"):]
-
+                self.die = True
+                self.last_client = conn # we send status after watch() finishes
+                send_line(conn, "cleaning up")
+            case "SAVE":
+                if not matched[2]:
+                    self.send_status(conn, 401)
+                    return
+                fname = matched[2]
+                self.logger.info(f"# saving as '{fname}'")
                 self.dont_plot = True
+                self.summarize()
+                if not fname:
+                    fname = graph.DEFAULT_PLOT_FNAME
+                send_line(conn, f"saving as '{fname}'")
+                graph.graph(self.session_name, self.tmpfs_color, self.other_cache_color, fname)
+                send_line(conn, "saving ok")
+                self.send_status(conn, 200)
+            case "LABEL":
+                if not matched[2]:
+                    self.send_status(conn, 401)
+                    return
+                label = matched[2]
+                self.logger.info(f"# new label '{label}'")
+                send_line(conn, f"new label '{label}'")
+                with open(session.data_file(self.session_name), "a") as f:
+                    timestamp = now.strftime("%Y-%m-%d-%H:%M:%S")
+                    print(f"# {timestamp} label: {label}", file=f)
+                self.send_status(conn, 200)
+            case "PING":
+                send_line(conn, f"PONG {' '.join(map(str, session.get_address(self.session_name)))}")
+                self.send_status(conn, 200)
+            case _:
+                self.send_status(conn, 400)
 
-                if label_line != "none":
-                    self.summarize()
-                if not label_line:
-                    graph.graph(self.session, self.tmpfs_color, self.other_cache_color)
-                else:
-                    graph.graph(self.session, self.tmpfs_color, self.other_cache_color, label_line)
-        elif label_line.startswith('label:'):
-            label_line = label_line[len('label:'):]
-            with open(f"{self.session}.txt", "a") as f:
-                timestamp = now.strftime("%Y-%m-%d-%H:%M:%S")
-                print(f"# {timestamp} label: {label_line}", file=f)
-        return False
 
 class SarWatcher(Watcher):
 
@@ -404,11 +456,7 @@ class SarWatcher(Watcher):
                 continue
 
             if socket_fd in rlist:
-                data = self.recv_data()
-                now = datetime.datetime.now()
-                if self.handle_command(data, s, now):
-                    break
-                
+                self.accept_client(s)
 
             date = now.strftime("%Y-%m-%d")
             daytime = now.strftime("%H:%M:%S")
@@ -520,7 +568,7 @@ class SarWatcher(Watcher):
         # This runs if we were stopped by SIGTERM and no plot was made so far
         if not self.dont_plot:
             self.summarize()
-            graph.graph(self.session, self.tmpfs_color, self.other_cache_color)
+            graph.graph(self.session_name, self.tmpfs_color, self.other_cache_color)
 
 class PsUtilWatcher(Watcher):
 
@@ -629,16 +677,13 @@ class PsUtilWatcher(Watcher):
 
         socket_fd = self.sock.fileno()
 
-        while 1:
+        while not self.die:
             # Await sar output or a command sent from command handler in sargraph.py
             readlist = [socket_fd]
             rlist, _, _ = select.select(readlist, [], [], 0.25)
 
             if socket_fd in rlist:
-                data = self.recv_data()
-                now = datetime.datetime.now()
-                if self.handle_command(data, s, now):
-                    break
+                self.accept_client(s)
 
         list(map(s.cancel, s.queue))
         thread.join()
@@ -646,4 +691,4 @@ class PsUtilWatcher(Watcher):
         # This runs if we were stopped by SIGTERM and no plot was made so far
         if not dont_plot:
             self.summarize()
-            graph.graph(self.session, self.tmpfs_color, self.other_cache_color)
+            graph.graph(self.session_name, self.tmpfs_color, self.other_cache_color)
