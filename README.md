@@ -21,10 +21,13 @@ apt-get install -qqy --no-install-recommends \
     git \
     gnuplot-nox \
     python3 \
+    python3-venv \
     python3-pip \
     sysstat
 
 # install Python dependencies
+python3 -m venv .env
+source .env/bin/activate
 pip3 install -r requirements.txt
 ```
 

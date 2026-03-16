@@ -1,21 +1,23 @@
-image: debian:bullseye
-
-before_script:
-    - apt-get update
-    - apt-get install -qqy --no-install-recommends python3 python3-pip git colorized-logs
-    - pip3 install git+https://github.com/antmicro/tuttest.git
-    - pip3 install bokeh
+image: debian:trixie
 
 simple_test:
-    script:
-        - ./scripts/test.sh
-        - cat plot.ascii | ansi2txt
-    artifacts:
-        when: always
-        paths:
-            - "plot.svg"
-            - "plot.png"
-            - "plot.ascii"
-            - "plot.html"
-            - "example.log"
-            - "example.txt"
+  before_get_sources:
+    - apt-get update
+    - apt-get install -qqy --no-install-recommends python3 python3-venv python3-pip git colorized-logs e2fsprogs
+  before_script:
+    - python3 -m venv .env
+    - source .env/bin/activate
+    - pip3 install git+https://github.com/antmicro/tuttest.git
+    - pip3 install bokeh
+  script:
+    - source .env/bin/activate
+    - ./scripts/test.sh
+    - cat plot.ascii | ansi2txt
+  artifacts:
+    when: always
+    paths:
+      - ".run/**"
+      - "plot.svg"
+      - "plot.png"
+      - "plot.ascii"
+      - "plot.html"
