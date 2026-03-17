@@ -76,6 +76,19 @@ def print_response(sarconn):
             print('[SARGRAPH]', line)
 
 match args.command[0]:
+    case "log":
+        with open(session.data_file(args.session)) as log:
+            for line in log:
+                if line.startswith("#"):
+                    print(line, end='')
+            try:
+                while True:
+                    new_line = log.readline()
+                    if new_line and new_line.startswith("#"):
+                        print(new_line, end='')
+            except KeyboardInterrupt:
+                sys.exit(0)
+
     case 'plot':
         fname = graph.DEFAULT_PLOT_FNAME
         if len(args.command) > 1:
