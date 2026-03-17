@@ -89,6 +89,13 @@ match args.command[0]:
             except KeyboardInterrupt:
                 sys.exit(0)
 
+    case 'list':
+        try:
+            with open(session.SESSION_FILE, "r") as f:
+                print("\n".join(f.readlines()), end='')
+        except FileNotFoundError:
+            pass
+
     case 'plot':
         fname = graph.DEFAULT_PLOT_FNAME
         if len(args.command) > 1:
