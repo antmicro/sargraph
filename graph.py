@@ -59,7 +59,7 @@ labels = []
 
 
 # Check if the avaliable gnuplot has a required version
-p = run_or_fail("gnuplot", "--version", stdout=subprocess.PIPE)
+p = run_or_fail("gnuplot", "--version", stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 version = scan("gnuplot (\\S+)", str, p.stdout.readline().decode())
 if not is_version_ge(version, GNUPLOT_VERSION_EXPECTED):
     fail(
