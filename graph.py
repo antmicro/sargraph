@@ -123,9 +123,18 @@ def fix_size(size):
         size = int(size*1.25)
     return size
 
+def set_yrange_tics(total):
+    total, unit = total.split()
+    total = float(total)
+    incr = total / 5
+    g(f'set format y2 "%5.2f {unit}"')
+    g(f"set y2tics 0,{incr},{total} scale 0") # scale 0 to hide the marks as we alread have grid
+    g(f"set y2range [0:{total}]")
 
 # Plot a single column of values from data.txt
-def plot(ylabel, title, sar_file, column, space=3, autoscale=None):
+def plot(ylabel, title, sar_file, column, space=3, autoscale=None, total=None):
+    if total:
+        set_yrange_tics(total)
     if autoscale is None:
         g("set yrange [0:100]")
         g("set cbrange [0:100]")
@@ -139,8 +148,11 @@ def plot(ylabel, title, sar_file, column, space=3, autoscale=None):
     g(f"set ylabel '{ylabel}'")
     g(f"set title \"{{/:Bold {title}}}" + ("\\n" * space) + "\"")
     g(f"plot '{sar_file}' using 1:{column}:{column} title 'cpu' with boxes palette")
+    g(f"unset y2tics")
 
-def plot_stacked(ylabel, title, ram_file, column, tmpfs_color, other_cache_color, space=3, autoscale=None):
+def plot_stacked(ylabel, title, ram_file, column, tmpfs_color, other_cache_color, space=3, autoscale=None, total=None):
+    if total:
+        set_yrange_tics(total)
     if autoscale is None:
         g("set yrange [0:100]")
         g("set cbrange [0:100]")
@@ -163,6 +175,7 @@ def plot_stacked(ylabel, title, ram_file, column, tmpfs_color, other_cache_color
         '' using 1:5 with boxes title 'Shared mem' lc rgb '{tmpfs_color}', \
         '' using 1:($3 - $5) with boxes title 'Other cache (freed automatically)' lc rgb '{other_cache_color}'")
     g('unset key')
+    g(f"unset y2tics")
 
 # Read additional information from 'data.txt' comments
 def read_comments(sar_file):
@@ -402,14 +415,14 @@ def graph(session, tmpfs_color, other_cache_color, fname='plot'):
     g("set key tc rgb 'white'")
     g("set timefmt '%Y-%m-%d-%H:%M:%S'")
     g("set xtics format '%H:%M:%S'")
-    g(f"set xtics font 'monospace,{fix_size(8)}' tc rgb 'white'")
-    g(f"set ytics font 'monospace,{fix_size(8)}' tc rgb 'white'")
+    g(f"set xtics font 'monospace,{fix_size(8)}' tc rgb 'white' scale 0")
+    g(f"set ytics font 'monospace,{fix_size(8)}' tc rgb 'white' scale 0")
     g("set grid xtics ytics ls 12 lc rgb '#c4c2c5'")
     g("set style fill solid")
     g("set palette defined ( 0.0 '#00af91', 0.25 '#00af91', 0.75 '#d83829', 1.0 '#d83829' )")
     g("unset colorbox")
     g("unset key")
-    g("set rmargin 6")
+    g("set rmargin 10")
 
     g(f"set output '{fname}.{OUTPUT_EXT}'")
 
@@ -465,10 +478,10 @@ def graph(session, tmpfs_color, other_cache_color, fname='plot'):
     # Set scale for plots displayed in relative units (%)
     plot("CPU load (%)",
          f"CPU load (average = {AVERAGE_LOAD:.2f} %)", sar_file, 2, space=space)
-    plot_stacked(f"RAM usage (100% = {TOTAL_RAM})",
-         f"RAM usage (max = {MAX_USED_RAM})", ram_file, 4, tmpfs_color, other_cache_color, space=space)
-    plot(f"FS usage (100% = {TOTAL_FS})", f"{NAME_FS} usage (max = {MAX_USED_FS})",
-         sar_file, 3, space=space)
+    plot_stacked(f"RAM usage (%)",
+                 f"RAM usage (max = {MAX_USED_RAM})", ram_file, 4, tmpfs_color, other_cache_color, space=space, total=TOTAL_RAM)
+    plot(f"FS usage (%)",
+         f"{NAME_FS} usage (max = {MAX_USED_FS})", sar_file, 3, space=space, total=TOTAL_FS)
 
     plot(f"{NAME_IFACE} received (Mb/s)",
          f"{NAME_IFACE} data received (max = {MAX_RX}, total = {TOTAL_RX})",
@@ -481,8 +494,8 @@ def graph(session, tmpfs_color, other_cache_color, fname='plot'):
     if TOTAL_GPU_RAM != 0:
         plot("GPU load (%)",
              f"GPU load (average = {AVERAGE_GPU_LOAD} %)", sar_file, 6, space=space)
-        plot(f"GPU RAM usage (100% = {TOTAL_GPU_RAM})",
-             f"GPU RAM usage (max = {MAX_USED_GPU_RAM})", sar_file, 7, space=space)
+        plot(f"GPU RAM usage (%)",
+             f"GPU RAM usage (max = {MAX_USED_GPU_RAM})", sar_file, 7, space=space, total=TOTAL_GPU_RAM)
 
     g("unset multiplot")
     g("unset output")
