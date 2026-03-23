@@ -29,6 +29,7 @@ apt-get install -qqy --no-install-recommends \
 python3 -m venv .env
 source .env/bin/activate
 pip3 install -r requirements.txt
+ln -s $(realpath sargraph.py) .env/bin/sargraph
 ```
 
 For rendering HTML plots, you additionally have to install:
@@ -46,7 +47,7 @@ pip3 install git+https://github.com/antmicro/servis#egg=servis[bokeh]
 All sargraph commands use the following pattern:
 
 ```
-$ ./sargraph.py [session_name] [command] [args...]
+$ sargraph [session_name] [command] [args...]
 ```
 
 Let's create a sample disk on which we will run stress tests:
@@ -65,9 +66,10 @@ apt-get install stress
 
 ## Starting a session
 
-Start a background session and name it `example`:
+Create a directory for the graph output and start a background session named `example`:
 ```
-./sargraph.py example start -m ./mountpoint
+mkdir test_out
+(cd test_out && sargraph example start -m ../mountpoint)
 ```
 
 The data will be saved in `example.txt`.
@@ -80,7 +82,7 @@ Logs from screen will be written to `example.log`.
 Add labels that will be placed as comments in the collected dataset.
 They will be also visible on the plots:
 ```
-./sargraph.py example label "Compilation start"
+sargraph example label "Compilation start"
 ```
 
 After this, let's simulate some processing:
@@ -96,13 +98,13 @@ popd
 It is possible to plot data collected so far in a still running session:
 ```
 # Save plot to SVG
-./sargraph.py example save plot.svg
+sargraph example save plot.svg
 # Save plot to PNG
-./sargraph.py example save plot.png
+sargraph example save plot.png
 # Save plot to ASCII that can be printed in terminal
-./sargraph.py example save plot.ascii
+sargraph example save plot.ascii
 # Save plot to interactive HTML plot
-./sargraph.py example save plot.html
+sargraph example save plot.html
 ```
 
 The supported formats are:
@@ -116,7 +118,7 @@ The supported formats are:
 
 Stop a session and create a final `plot.png` plot file if no other plot was created so far:
 ```
-./sargraph.py example stop
+sargraph example stop
 ```
 
 The filename of the final plot can be changed if its placed after the `stop` command.
@@ -126,6 +128,6 @@ If the name is `none` then no plot will be created.
 
 Plot data collected in a session that is not running anymore.
 ```
-./sargraph.py example plot plot.ascii
+sargraph example plot plot.ascii
 ```
 The command requires the `example.txt` log file to be present in the working directory.

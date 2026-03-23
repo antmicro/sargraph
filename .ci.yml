@@ -12,12 +12,9 @@ simple_test:
   script:
     - source .env/bin/activate
     - ./scripts/test.sh
-    - cat plot.ascii | ansi2txt
+    - cat test_out/plot.ascii | ansi2txt
   artifacts:
     when: always
     paths:
       - ".run/**"
-      - "plot.svg"
-      - "plot.png"
-      - "plot.ascii"
-      - "plot.html"
+      - "test_*/**"
